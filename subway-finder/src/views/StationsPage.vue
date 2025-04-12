@@ -353,161 +353,166 @@ const getNextStation = (stationName) => {
 </script>
 
 <template>
-  <div class="stations-container">
-    <div class="header-with-back">
-      <button class="back-button" @click="goBack">
-        <span>←</span>
-      </button>
-      <div class="page-title-container" v-if="subwayStore.currentLine">
-        <h2 class="page-title">{{ subwayStore.currentLine.name }}</h2>
+  <div class="fullscreen-page">
+    <div class="status-bar-spacer"></div>
+    
+    <!-- iOS风格导航栏 -->
+    <div class="ios-navbar">
+      <div class="ios-back-button" @click="goBack">返回</div>
+      <h1 v-if="subwayStore.currentLine">{{ subwayStore.currentLine.name }}</h1>
+      <div class="home-icon" @click="goToHome">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </div>
+    </div>
+    
+    <div class="page-content">
+      <!-- 方向和模式信息 -->
+      <div class="ios-card info-card">
         <div class="direction-info" v-if="directionInfo">
           {{ directionInfo.name }}
         </div>
         <div class="mode-info">
-          <span v-if="subwayStore.currentMode === 'collection'">数据采集</span>
-          <span v-else>位置展示</span>
+          <span v-if="subwayStore.currentMode === 'collection'">数据采集模式</span>
+          <span v-else>位置展示模式</span>
         </div>
       </div>
       
-      <!-- 改进点13: 添加返回首页按钮 -->
-      <button class="home-button" @click="goToHome" title="返回首页">
-        <span>🏠</span>
-      </button>
-    </div>
-    
-    <!-- 当前状态面板 -->
-    <div class="current-status-panel" v-if="currentStatus">
-      <div class="status-icon">
-        <span v-if="lastEvent && lastEvent.eventType === 'arrival'">🚉</span>
-        <span v-else-if="lastEvent && lastEvent.eventType === 'departure'">🚄</span>
-        <span v-else>🔄</span>
-      </div>
-      <div class="status-content">
-        <div class="status-text">
-          <template v-if="lastEvent && lastEvent.eventType === 'arrival'">
-            当前位置：<span class="station-name">{{ lastEvent.stationName }}站已到达</span>
-          </template>
-          <template v-else-if="lastEvent && lastEvent.eventType === 'departure'">
-            <template v-if="getNextStation(lastEvent.stationName)">
-              当前位置：<span class="station-name">{{ lastEvent.stationName }}开往{{ getNextStation(lastEvent.stationName).name }}</span>
+      <!-- 当前状态面板 -->
+      <div class="ios-card status-card" v-if="currentStatus">
+        <div class="status-icon" :class="{
+          'arrival-icon': lastEvent && lastEvent.eventType === 'arrival',
+          'departure-icon': lastEvent && lastEvent.eventType === 'departure'
+        }">
+          <span v-if="lastEvent && lastEvent.eventType === 'arrival'">🚉</span>
+          <span v-else-if="lastEvent && lastEvent.eventType === 'departure'">🚄</span>
+          <span v-else>🔄</span>
+        </div>
+        <div class="status-content">
+          <div class="status-text">
+            <template v-if="lastEvent && lastEvent.eventType === 'arrival'">
+              当前位置：<span class="station-name">{{ lastEvent.stationName }}站已到达</span>
+            </template>
+            <template v-else-if="lastEvent && lastEvent.eventType === 'departure'">
+              <template v-if="getNextStation(lastEvent.stationName)">
+                当前位置：<span class="station-name">{{ lastEvent.stationName }}开往{{ getNextStation(lastEvent.stationName).name }}</span>
+              </template>
+              <template v-else>
+                当前位置：<span class="station-name">{{ lastEvent.stationName }}已是终点站</span>
+              </template>
             </template>
             <template v-else>
-              当前位置：<span class="station-name">{{ lastEvent.stationName }}已是终点站</span>
+              当前位置：未开始运行
             </template>
-          </template>
-          <template v-else>
-            当前位置：未开始运行
-          </template>
-        </div>
-        <div class="time-info" v-if="lastEvent">
-          <div class="time-label">
-            {{ lastEvent.eventType === 'arrival' ? '停车时间' : '行驶时间' }}:
           </div>
-          <div class="time-value">{{ formatTime(elapsedTime) }}</div>
+          <div class="time-info" v-if="lastEvent">
+            <div class="time-label">
+              {{ lastEvent.eventType === 'arrival' ? '停车时间' : '行驶时间' }}:
+            </div>
+            <div class="time-value">{{ formatTime(elapsedTime) }}</div>
+          </div>
         </div>
       </div>
-    </div>
-    
-    <div class="cancel-buttons" v-if="subwayStore.currentMode === 'collection'">
-      <button class="cancel-button" @click="cancelLastEvent" :disabled="!lastEvent">
-        撤销最近操作
-      </button>
-    </div>
-    
-    <div class="stations-list">
-      <div class="station-row" v-for="station in stations" :key="station.name">
-        <button 
-          class="station-button arrival" 
-          @click="() => handleStationSelect(station, 'arrival')"
-          :style="{ borderColor: getLineColor(props.lineId) }"
-          :class="{ 'disabled': getButtonState(station, 'arrival').disabled }"
-          :disabled="getButtonState(station, 'arrival').disabled"
-          :title="getButtonState(station, 'arrival').reason"
-        >
-          {{ station.name }}-到站
+      
+      <!-- 撤销按钮 -->
+      <div v-if="subwayStore.currentMode === 'collection' && lastEvent" class="cancel-section">
+        <button class="cancel-button" @click="cancelLastEvent">
+          撤销最近操作
         </button>
+      </div>
+      
+      <!-- 站点列表 -->
+      <div class="stations-section">
+        <div class="section-header">
+          <h2>选择站点</h2>
+        </div>
         
-        <button 
-          class="station-button departure" 
-          @click="() => handleStationSelect(station, 'departure')"
-          :style="{ borderColor: getLineColor(props.lineId) }"
-          :class="{ 'disabled': getButtonState(station, 'departure').disabled }"
-          :disabled="getButtonState(station, 'departure').disabled"
-          :title="getButtonState(station, 'departure').reason"
-        >
-          {{ station.name }}-起步
-        </button>
+        <div class="stations-list ios-list">
+          <div class="station-row" v-for="station in stations" :key="station.name">
+            <div class="station-actions">
+              <button 
+                class="station-button arrival" 
+                @click="() => handleStationSelect(station, 'arrival')"
+                :style="{ borderColor: getLineColor(props.lineId) }"
+                :class="{ 'disabled': getButtonState(station, 'arrival').disabled }"
+                :disabled="getButtonState(station, 'arrival').disabled"
+                :title="getButtonState(station, 'arrival').reason"
+              >
+                到站
+              </button>
+              
+              <button 
+                class="station-button departure" 
+                @click="() => handleStationSelect(station, 'departure')"
+                :style="{ borderColor: getLineColor(props.lineId) }"
+                :class="{ 'disabled': getButtonState(station, 'departure').disabled }"
+                :disabled="getButtonState(station, 'departure').disabled"
+                :title="getButtonState(station, 'departure').reason"
+              >
+                起步
+              </button>
+            </div>
+            <div class="station-name-display">{{ station.name }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.stations-container {
-  padding: 1rem;
+.page-content {
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.header-with-back {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.back-button, .home-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-right: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-}
-
-.home-button {
-  margin-right: 0;
-  margin-left: 0.5rem;
-}
-
-.page-title-container {
-  flex: 1;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
+.info-card {
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .direction-info {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
+  font-size: 17px;
+  font-weight: 500;
+  color: #000000;
+  margin-bottom: 8px;
 }
 
 .mode-info {
-  font-size: 0.8rem;
-  color: #888;
-  margin-top: 0.15rem;
+  font-size: 14px;
+  color: #8e8e93;
 }
 
-/* 当前状态面板样式 */
-.current-status-panel {
+.status-card {
+  padding: 16px;
+  margin-bottom: 16px;
   display: flex;
   align-items: flex-start;
-  background-color: #f2f7fe;
-  border: 1px solid #d8e5f9;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
 }
 
 .status-icon {
-  font-size: 1.7rem;
-  margin-right: 0.75rem;
-  margin-top: 0.1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-right: 16px;
+  background-color: #007aff;
+  color: white;
+  flex-shrink: 0;
+}
+
+.status-icon.arrival-icon {
+  background-color: #ff9500;
+}
+
+.status-icon.departure-icon {
+  background-color: #34c759;
 }
 
 .status-content {
@@ -515,107 +520,131 @@ const getNextStation = (stationName) => {
 }
 
 .status-text {
-  font-size: 1rem;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
+  font-size: 17px;
+  font-weight: 400;
+  margin-bottom: 12px;
 }
 
 .station-name {
   font-weight: 600;
-  color: #0052cc;
+  color: #007aff;
 }
 
 .time-info {
   display: flex;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.05);
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  margin-top: 0.25rem;
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 .time-label {
-  font-size: 0.8rem;
-  color: #666;
-  margin-right: 0.5rem;
+  font-size: 14px;
+  color: #8e8e93;
+  margin-right: 8px;
 }
 
 .time-value {
-  font-size: 0.9rem;
+  font-size: 15px;
   font-weight: 600;
-  color: #e65100;
+  color: #ff3b30;
 }
 
-.cancel-buttons {
-  margin-bottom: 1rem;
+.cancel-section {
+  margin-bottom: 16px;
 }
 
 .cancel-button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
+  width: 100%;
+  background-color: #ff3b30;
+  height: 44px;
+  font-size: 17px;
+  border-radius: 10px;
 }
 
-.cancel-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+.section-header {
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .stations-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  margin-bottom: 24px;
 }
 
 .station-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  padding: 16px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.station-row:last-child {
+  border-bottom: none;
+}
+
+.station-name-display {
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.station-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .station-button {
-  padding: 0.75rem;
-  background-color: white;
-  border: 2px solid;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  flex: 1;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .station-button.arrival {
-  background-color: #f5f5f5;
+  background-color: #ff9500;
 }
 
 .station-button.departure {
-  background-color: #e8f4fd;
-}
-
-.station-button:hover:not(.disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #34c759;
 }
 
 .station-button.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  border-color: #ccc !important;
+  opacity: 0.5;
+  background-color: #8e8e93;
 }
 
-/* 响应式样式 */
-@media (max-width: 480px) {
-  .station-button {
-    font-size: 0.8rem;
-    padding: 0.6rem;
+.home-icon {
+  width: 22px;
+  height: 22px;
+  color: #007aff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .direction-info {
+    color: #ffffff;
   }
   
   .status-text {
-    font-size: 0.9rem;
+    color: #ffffff;
+  }
+  
+  .station-name {
+    color: #0a84ff;
+  }
+  
+  .time-info {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .station-row {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 }
 </style> 

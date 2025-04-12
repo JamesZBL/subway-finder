@@ -1076,56 +1076,28 @@ const calculateTrainPosition = computed(() => {
 </script>
 
 <template>
-  <div class="map-container">
-    <!-- 头部区域 -->
-    <div class="header-with-actions">
-      <button class="back-button" @click="goBack">
-        <span>←</span>
-      </button>
-      <div class="title-container" v-if="subwayStore.currentLine">
-        <h2 class="page-title">{{ subwayStore.currentLine.name }} 实时位置</h2>
-        <div class="direction-info" v-if="directionInfo">
-          {{ directionInfo.name }}
-        </div>
-      </div>
-      <div class="actions-container">
-        <button class="home-button" @click="goToHome" title="返回首页">
-          <span>🏠</span>
-        </button>
-        <button class="action-button" @click="toggleDetails">
-          {{ showDetails ? '隐藏详情' : '查看详情' }}
-        </button>
-        <button class="action-button estimate-button" @click="toggleFullRouteEstimate">
-          {{ showFullRouteEstimate ? '隐藏估算' : '全程估算' }}
-        </button>
-        <button class="switch-line-button" @click="switchLine">
-          切换线路
-        </button>
+  <div class="fullscreen-page">
+    <div class="status-bar-spacer"></div>
+    
+    <!-- iOS风格导航栏 -->
+    <div class="ios-navbar">
+      <div class="ios-back-button" @click="goBack">返回</div>
+      <h1 v-if="subwayStore.currentLine">{{ subwayStore.currentLine.name }}</h1>
+      <div class="home-icon" @click="goToHome">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
       </div>
     </div>
     
-    <!-- 站点和进度区域 - 完全独立于地图 -->
-    <div class="status-panel">
-      <div class="station-info-compact">
-        <div class="station-column">
-          <div class="station-label">当前站点</div>
-          <div class="station-value">{{ currentStation ? currentStation.name : '-' }}</div>
-        </div>
-        <div class="divider"></div>
-        <div class="station-column">
-          <div class="station-label">下一站点</div>
-          <div class="station-value">{{ nextStation ? nextStation.name : '-' }}</div>
-        </div>
-        <div class="divider"></div>
-        <div class="station-column arrival-column">
-          <div class="station-label">预计到达</div>
-          <div class="station-value" :class="{'arriving-soon': estimatedArrivalTime && (estimatedArrivalTime.includes('即将到站') || estimatedArrivalTime.includes('即将发车'))}">
-            {{ estimatedArrivalTime || '-' }}
-          </div>
-        </div>
+    <!-- 状态信息卡片 -->
+    <div class="ios-card station-status-card">
+      <div class="direction-info" v-if="directionInfo">
+        {{ directionInfo.name }}
       </div>
       
-      <!-- 改进21: 添加当前状态显示 -->
+      <!-- 改进21: 当前状态显示 -->
       <div class="current-status">
         <div class="status-icon" :class="{ 
           'status-stopping': eventTypeCode === 1, 
@@ -1140,17 +1112,30 @@ const calculateTrainPosition = computed(() => {
         <div class="status-text">{{ currentStatusText }}</div>
       </div>
       
+      <!-- 站点和进度信息 -->
+      <div class="station-info-compact">
+        <div class="station-row">
+          <div class="station-label">当前站点</div>
+          <div class="station-value">{{ currentStation ? currentStation.name : '-' }}</div>
+        </div>
+        <div class="station-row">
+          <div class="station-label">下一站点</div>
+          <div class="station-value">{{ nextStation ? nextStation.name : '-' }}</div>
+        </div>
+        <div class="station-row">
+          <div class="station-label">预计到达</div>
+          <div class="station-value" :class="{'arriving-soon': estimatedArrivalTime && (estimatedArrivalTime.includes('即将到站') || estimatedArrivalTime.includes('即将发车'))}">
+            {{ estimatedArrivalTime || '-' }}
+          </div>
+        </div>
+      </div>
+      
+      <!-- 进度条 -->
       <div class="progress-container">
-        <div class="station-labels station-labels-top">
-          <span class="station-label" v-if="currentStation">
-            {{ currentStation.name }}
-          </span>
-          <span class="station-progress" v-if="currentPosition > 0">
-            {{ progressText }}
-          </span>
-          <span class="station-label" v-if="nextStation">
-            {{ nextStation.name }}
-          </span>
+        <div class="station-labels">
+          <span class="from-station" v-if="currentStation">{{ currentStation.name }}</span>
+          <span class="progress-percent" v-if="currentPosition > 0">{{ progressText }}</span>
+          <span class="to-station" v-if="nextStation">{{ nextStation.name }}</span>
         </div>
         
         <div class="progress-bar">
@@ -1158,51 +1143,72 @@ const calculateTrainPosition = computed(() => {
             class="progress-fill" 
             :style="{ 
               width: `${currentPosition}%`,
-              backgroundColor: isTerminalStation ? '#4CAF50' : lineColor
+              backgroundColor: isTerminalStation ? '#34c759' : lineColor
             }"
           ></div>
         </div>
       </div>
     </div>
     
-    <!-- 改进27: 添加全程时间估算面板 -->
-    <div class="estimate-panel" v-if="showFullRouteEstimate">
-      <h3 class="estimate-title">全程运行时间估算</h3>
-      <div class="estimate-note">注：时间估算基于历史数据，仅供参考</div>
-      <div class="estimate-content">
-        <table class="estimate-table">
-          <thead>
-            <tr>
-              <th>站点</th>
-              <th>预计到达</th>
-              <th>预计发车</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(station, index) in updateFullRouteEstimate" :key="index" 
-                :class="{
-                  'current-station-row': station.isCurrentStation,
-                  'next-station-row': station.isNextStation
-                }">
-              <td class="station-name-cell">
-                <span v-if="station.isCurrentStation" class="current-indicator">⦿</span>
-                <span v-else-if="station.isNextStation" class="next-indicator">➔</span>
-                {{ station.name }}
-              </td>
-              <td>{{ station.arrivalTime }}</td>
-              <td>{{ station.departureTime }}</td>
-            </tr>
-            <tr v-if="!updateFullRouteEstimate.length">
-              <td colspan="3" class="no-data">暂无估算数据</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- 地图区域 -->
+    <div class="map-section">
+      <div class="map-wrapper"
+           @touchstart="startDragMap"
+           @touchmove="dragMap"
+           @touchend="stopDragMap"
+           @touchcancel="stopDragMap">
+        <div class="map-image" 
+             :style="{ 
+               transform: `scale(${zoom}) translate(${mapOffsetX / zoom}px, ${mapOffsetY / zoom}px)`,
+               transformOrigin: '0 0'
+             }">
+          <img :src="mapImageSrc" alt="地铁线路图" class="subway-map">
+          
+          <!-- 添加火车位置标记 -->
+          <div 
+            v-if="currentTrainPosition && currentTrainPosition.x && currentTrainPosition.y"
+            class="train-marker"
+            :style="{
+              left: `${currentTrainPosition.x}px`,
+              top: `${currentTrainPosition.y}px`,
+              backgroundColor: lineColor
+            }"
+          ></div>
+        </div>
       </div>
+      
+      <!-- 地图控制按钮组 -->
+      <div class="map-controls">
+        <button class="zoom-button" @click="() => adjustZoom(0.2)">+</button>
+        <button class="zoom-button" @click="() => adjustZoom(-0.2)">-</button>
+        <button class="zoom-button reset-button" @click="resetMapPosition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 底部操作按钮 -->
+    <div class="bottom-actions">
+      <button class="action-button" @click="toggleDetails">
+        {{ showDetails ? '隐藏详情' : '查看详情' }}
+      </button>
+      <button class="action-button" @click="toggleFullRouteEstimate">
+        {{ showFullRouteEstimate ? '隐藏估算' : '全程估算' }}
+      </button>
+      <button class="action-button switch-line-button" @click="switchLine">
+        切换线路
+      </button>
     </div>
     
     <!-- 详细信息面板 -->
     <div class="details-panel" v-if="showDetails">
-      <h3 class="details-title">运行详情</h3>
+      <div class="panel-header">
+        <h3>运行详情</h3>
+        <button class="close-button" @click="toggleDetails">✕</button>
+      </div>
       <div class="details-content">
         <div class="details-section">
           <div class="section-title">实时状态</div>
@@ -1253,600 +1259,480 @@ const calculateTrainPosition = computed(() => {
       </div>
     </div>
     
-    <!-- 地图区域 - 独立的区域 -->
-    <div class="map-section">
-      <div class="map-wrapper"
-           @mousedown="startDragMap"
-           @mousemove="dragMap"
-           @mouseup="stopDragMap"
-           @mouseleave="stopDragMap"
-           @touchstart="startDragMap"
-           @touchmove="dragMap"
-           @touchend="stopDragMap"
-           @touchcancel="stopDragMap">
-        <div class="map-controls">
-          <button class="zoom-button" @click="() => adjustZoom(0.1)">+</button>
-          <button class="zoom-button" @click="() => adjustZoom(-0.1)">-</button>
-          <!-- 改进22: 添加重置按钮 -->
-          <button class="zoom-button reset-button" @click="resetMapPosition" title="重置地图位置">R</button>
-        </div>
-        
-        <div class="map-image" 
-             :style="{ 
-               transform: `scale(${zoom}) translate(${mapOffsetX / zoom}px, ${mapOffsetY / zoom}px)`,
-               cursor: isDragging ? 'grabbing' : (zoom > 1 ? 'grab' : 'default')
-             }">
-          <img src="/images/Beijing Rail Transit Lines.png" alt="北京地铁线路图" class="subway-map">
-          
-          <!-- 改进33: 修正列车位置图标显示 -->
-          <div class="train-position-marker" 
-               v-if="currentStation && lineId && calculateTrainPosition[0] && calculateTrainPosition[1]"
-               :style="{
-                 left: `${calculateTrainPosition[0]}px`,
-                 top: `${calculateTrainPosition[1]}px`,
-                 color: lineColor
-               }">
-            🚄
-          </div>
-        </div>
+    <!-- 全程时间估算面板 -->
+    <div class="estimate-panel" v-if="showFullRouteEstimate">
+      <div class="panel-header">
+        <h3>全程运行时间估算</h3>
+        <button class="close-button" @click="toggleFullRouteEstimate">✕</button>
+      </div>
+      <div class="estimate-content">
+        <div class="estimate-note">注：时间估算基于历史数据，仅供参考</div>
+        <table class="estimate-table">
+          <thead>
+            <tr>
+              <th>站点</th>
+              <th>预计到达</th>
+              <th>预计发车</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(station, index) in updateFullRouteEstimate" :key="index" 
+                :class="{
+                  'current-station-row': station.isCurrentStation,
+                  'next-station-row': station.isNextStation
+                }">
+              <td class="station-name-cell">
+                <span v-if="station.isCurrentStation" class="current-indicator">⦿</span>
+                <span v-else-if="station.isNextStation" class="next-indicator">➔</span>
+                {{ station.name }}
+              </td>
+              <td>{{ station.arrivalTime }}</td>
+              <td>{{ station.departureTime }}</td>
+            </tr>
+            <tr v-if="!updateFullRouteEstimate.length">
+              <td colspan="3" class="no-data">暂无估算数据</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
+    
+    <div class="bottom-safe-area"></div>
   </div>
 </template>
 
 <style scoped>
-.map-container {
+.fullscreen-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f2f2f7;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100%;
   overflow: hidden;
 }
 
-.header-with-actions {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+.station-status-card {
+  padding: 16px;
+  margin: 10px 16px;
   background-color: white;
-}
-
-.back-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-}
-
-.title-container {
-  flex: 1;
-  text-align: center;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .direction-info {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
+  font-size: 14px;
+  color: #8e8e93;
+  margin-bottom: 8px;
 }
 
-.actions-container {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.home-button, .action-button, .switch-line-button {
-  background-color: #0052cc;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-/* 状态面板 - 完全独立区域 */
-.status-panel {
-  padding: 0.75rem;
-  background-color: #f9f9f9;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.station-info-compact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  background-color: white;
-  border-radius: 8px;
-  padding: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* 改进21: 添加当前状态样式 */
 .current-status {
   display: flex;
   align-items: center;
-  background-color: white;
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin-bottom: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #f2f2f7;
+  border-radius: 10px;
 }
 
 .status-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: #007aff;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
+  margin-right: 12px;
+  font-size: 18px;
 }
 
-.status-stopping {
-  background-color: #f0f0f0;
-  color: #666;
+.status-icon.status-stopping {
+  background-color: #ff9500;
 }
 
-.status-running {
-  background-color: #e6f7ff;
-  color: #0052cc;
+.status-icon.status-running {
+  background-color: #30d158;
 }
 
-/* 改进25: 添加终点站状态样式 */
-.status-terminal {
-  background-color: #e8f5e9;
-  color: #4CAF50;
-  font-weight: bold;
+.status-icon.status-terminal {
+  background-color: #af52de;
 }
 
 .status-text {
-  font-weight: 500;
-  color: #333;
-  font-size: 0.95rem;
+  font-size: 17px;
+  font-weight: 600;
 }
 
-.station-column {
-  flex: 1;
+.station-info-compact {
+  margin-bottom: 16px;
+}
+
+.station-row {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
-  padding: 0 0.5rem;
+  padding: 8px 4px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
-.divider {
-  height: 30px;
-  width: 1px;
-  background-color: #eee;
+.station-row:last-child {
+  border-bottom: none;
 }
 
 .station-label {
-  font-size: 0.75rem;
-  color: #666;
-  margin-bottom: 0.25rem;
+  font-size: 15px;
+  color: #8e8e93;
 }
 
 .station-value {
-  font-size: 0.9rem;
+  font-size: 15px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.arrival-column {
-  flex: 1.5;
 }
 
 .arriving-soon {
-  color: #f44336;
-  font-weight: bold;
+  color: #ff3b30;
 }
 
-/* 进度条容器 - 完全独立区域 */
 .progress-container {
-  margin-top: 0.5rem;
-}
-
-.progress-bar {
-  height: 8px;
-  background-color: #eee;
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
-  margin: 0.25rem 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.progress-fill {
-  height: 100%;
-  transition: width 0.5s ease;
-}
-
-/* 改进25: 添加终点站样式 */
-.terminal-station {
-  background-color: #4CAF50 !important;
+  margin-top: 16px;
 }
 
 .station-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
-.station-labels-top {
-  margin-bottom: 0.25rem;
+.from-station, .to-station {
+  color: #8e8e93;
 }
 
-.station-progress {
-  color: #0052cc;
+.progress-percent {
+  color: #8e8e93;
   font-weight: 500;
 }
 
-/* 地图区域 - 完全独立区域 */
-.map-section {
-  flex: 1;
-  position: relative;
-  border-top: 2px solid #e0e0e0; /* 添加边框分隔 */
-  background-color: #fff;
+.progress-bar {
+  height: 8px;
+  background-color: #e5e5ea;
+  border-radius: 4px;
   overflow: hidden;
 }
 
-.map-wrapper {
+.progress-fill {
   height: 100%;
+  background-color: #007aff;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+.map-section {
+  flex: 1;
   position: relative;
   overflow: hidden;
-  /* 改进22: 添加相关样式，提高拖动体验 */
-  user-select: none;
-  touch-action: none;
+  margin: 0 16px 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.map-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.subway-map {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.train-marker {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background-color: #007aff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+  z-index: 10;
 }
 
 .map-controls {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
+  bottom: 16px;
+  right: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
+  z-index: 10;
 }
 
 .zoom-button {
   width: 36px;
   height: 36px;
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  cursor: pointer;
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* 改进22: 添加重置按钮样式 */
-.reset-button {
-  font-size: 0.9rem;
-  font-weight: bold;
-  background-color: #f0f0f0;
-}
-
-.map-image {
-  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.1s ease;
-  transform-origin: center;
-  /* 改进22: 设置默认的grab样式，提示用户地图可拖动 */
-  will-change: transform;
+  font-size: 20px;
+  font-weight: bold;
+  color: #007aff;
+  padding: 0;
 }
 
-.subway-map {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  /* 改进23: 添加图像渲染属性，确保放大时保持清晰度 */
-  image-rendering: -webkit-optimize-contrast; /* Chrome, Safari */
-  image-rendering: crisp-edges; /* Firefox */
-  -ms-interpolation-mode: nearest-neighbor; /* IE/Edge */
-  backface-visibility: hidden; /* 减少模糊 */
+.reset-button {
+  font-size: 16px;
 }
 
-/* 改进33: 修改列车位置标记样式 */
-.train-position-marker {
-  position: absolute;
-  font-size: 2rem;
-  z-index: 5; /* 增加z-index确保在地图上方 */
-  transform: translate(-50%, -50%); /* 居中显示 */
-  filter: drop-shadow(0 0 5px white); /* 添加阴影效果增强可见度 */
-  text-shadow: 0 0 5px white; /* 添加文字阴影，增强可见度 */
-  pointer-events: none; /* 防止影响地图拖动 */
-  animation: pulseMarker 1s infinite alternate; /* 添加脉动动画效果 */
-}
-
-@keyframes pulseMarker {
-  from {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  to {
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-}
-
-/* 详情面板 */
-.details-panel {
-  padding: 1rem;
-  background-color: #f9f9f9;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.details-title {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.25rem;
-  font-weight: 500;
-}
-
-.details-content {
+.bottom-actions {
   display: flex;
-  gap: 1rem;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.action-button {
+  flex: 1;
+  height: 44px;
+  padding: 0;
+  font-size: 15px;
+  background-color: #007aff;
+  color: white;
+}
+
+.switch-line-button {
+  background-color: #34c759;
+}
+
+.details-panel, .estimate-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f2f2f7;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: slide-up 0.3s ease;
+  overflow-y: auto;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.panel-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background-color: #e5e5ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  padding: 0;
+  color: #8e8e93;
+}
+
+.details-content, .estimate-content {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .details-section {
-  flex: 1;
+  background-color: white;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
 }
 
 .section-title {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #8e8e93;
 }
 
 .data-row {
-  margin-bottom: 0.5rem;
+  display: flex;
+  margin-bottom: 8px;
 }
 
 .data-label {
-  font-size: 0.8rem;
-  color: #666;
+  flex: 0 0 100px;
+  color: #8e8e93;
+  font-size: 15px;
 }
 
 .data-value {
-  font-size: 1rem;
+  flex: 1;
+  font-size: 15px;
+}
+
+.status-highlight {
+  color: #007aff;
   font-weight: 500;
 }
 
-/* 改进21: 添加状态高亮样式 */
-.status-highlight {
-  color: #0052cc;
-  font-weight: bold;
+.time-highlight {
+  color: #ff9500;
+  font-weight: 500;
 }
 
-.records-table {
+.records-table, .estimate-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 14px;
 }
 
-.records-table th,
-.records-table td {
-  padding: 0.5rem;
+.records-table th, .estimate-table th {
   text-align: left;
+  padding: 8px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  color: #8e8e93;
 }
 
-.records-table th {
-  background-color: #f9f9f9;
+.records-table td, .estimate-table td {
+  padding: 8px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
 .no-data {
   text-align: center;
-  color: #666;
-}
-
-@media (max-width: 768px) {
-  .header-with-actions {
-    flex-wrap: wrap;
-  }
-  
-  .title-container {
-    order: 1;
-    width: 100%;
-    margin-bottom: 0.5rem;
-  }
-  
-  .back-button {
-    order: 2;
-  }
-  
-  .actions-container {
-    order: 3;
-  }
-  
-  .details-content {
-    flex-direction: column;
-  }
-  
-  .records-table {
-    font-size: 0.8rem;
-  }
-  
-  .details-panel {
-    padding: 0.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .station-button {
-    font-size: 0.8rem;
-    padding: 0.5rem;
-  }
-  
-  .station-value {
-    font-size: 0.85rem;
-  }
-  
-  .station-label {
-    font-size: 0.7rem;
-  }
-  
-  .data-value {
-    font-size: 0.9rem;
-  }
-  
-  .details-title {
-    font-size: 1.1rem;
-  }
-  
-  .section-title {
-    font-size: 0.9rem;
-  }
-  
-  .records-table th,
-  .records-table td {
-    padding: 0.3rem;
-  }
-  
-  .status-panel {
-    padding: 0.5rem;
-  }
-}
-
-.home-button {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 0.5rem;
-}
-
-/* 改进26: 添加时间高亮样式 */
-.time-highlight {
-  color: #FF5722;
-  font-weight: bold;
-}
-
-/* 改进27: 添加全程时间估算样式 */
-.estimate-button {
-  background-color: #9C27B0;
-}
-
-.estimate-panel {
-  padding: 1rem;
-  background-color: #f5f0ff;
-  border-bottom: 1px solid #eee;
-  max-height: 50vh;
-  overflow-y: auto;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.estimate-title {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: #6a1b9a;
+  color: #8e8e93;
+  padding: 16px;
 }
 
 .estimate-note {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 1rem;
-  font-style: italic;
-}
-
-.estimate-content {
-  overflow-x: auto;
-}
-
-.estimate-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #e0e0e0;
-}
-
-.estimate-table th,
-.estimate-table td {
-  padding: 0.6rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.estimate-table th {
-  background-color: #9C27B0;
-  color: white;
-  font-weight: normal;
-}
-
-.station-name-cell {
-  font-weight: 500;
-  position: relative;
+  font-size: 14px;
+  color: #8e8e93;
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 .current-station-row {
-  background-color: #f3e5f5;
+  background-color: rgba(0, 122, 255, 0.1);
 }
 
 .next-station-row {
-  background-color: #e8f5e9;
+  background-color: rgba(52, 199, 89, 0.1);
 }
 
 .current-indicator {
-  color: #9C27B0;
-  margin-right: 0.3rem;
-  font-weight: bold;
+  color: #007aff;
+  margin-right: 4px;
 }
 
 .next-indicator {
-  color: #4CAF50;
-  margin-right: 0.3rem;
-  font-weight: bold;
+  color: #34c759;
+  margin-right: 4px;
 }
 
-@media (max-width: 768px) {
-  .estimate-panel {
-    padding: 0.5rem;
-  }
-  
-  .estimate-table th,
-  .estimate-table td {
-    padding: 0.4rem;
-    font-size: 0.9rem;
-  }
+.bottom-safe-area {
+  height: env(safe-area-inset-bottom);
 }
 
-@media (max-width: 480px) {
-  .estimate-table th,
-  .estimate-table td {
-    padding: 0.3rem;
-    font-size: 0.8rem;
+.home-icon {
+  width: 22px;
+  height: 22px;
+  color: #007aff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fullscreen-page {
+    background-color: #000000;
   }
   
-  .estimate-title {
-    font-size: 1.1rem;
+  .station-status-card {
+    background-color: #1c1c1e;
+  }
+  
+  .current-status {
+    background-color: #2c2c2e;
+  }
+  
+  .station-row {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .progress-bar {
+    background-color: #3a3a3c;
+  }
+  
+  .map-section {
+    background-color: #1c1c1e;
+  }
+  
+  .zoom-button {
+    background-color: rgba(30, 30, 30, 0.9);
+    color: #0a84ff;
+  }
+  
+  .details-section {
+    background-color: #1c1c1e;
+  }
+  
+  .records-table th, .estimate-table th,
+  .records-table td, .estimate-table td {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .panel-header {
+    background-color: rgba(30, 30, 30, 0.85);
+  }
+  
+  .close-button {
+    background-color: #3a3a3c;
+    color: #ffffff;
+  }
+  
+  .current-station-row {
+    background-color: rgba(10, 132, 255, 0.2);
+  }
+  
+  .next-station-row {
+    background-color: rgba(48, 209, 88, 0.2);
   }
 }
 </style> 

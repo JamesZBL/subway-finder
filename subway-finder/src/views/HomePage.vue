@@ -19,21 +19,27 @@ const navigateToDisplay = () => {
 </script>
 
 <template>
-  <div class="home-container">
-    <div class="subway-image">
-      <img src="/images/Beijing Rail Transit Lines.png" alt="北京地铁线路图" class="map-preview">
+  <div class="fullscreen-page">
+    <div class="status-bar-spacer"></div>
+    
+    <div class="ios-navbar">
+      <h1>北京地铁</h1>
     </div>
     
-    <div class="action-buttons">
-      <button class="action-button collection" @click="navigateToCollection">
-        <span class="icon">📝</span>
-        <span class="text">采集运行数据</span>
-      </button>
+    <div class="home-container">
+      <div class="subway-image">
+        <img src="/images/Beijing Rail Transit Lines.png" alt="北京地铁线路图" class="map-preview">
+      </div>
       
-      <button class="action-button display" @click="navigateToDisplay">
-        <span class="icon">🚄</span>
-        <span class="text">开始展示</span>
-      </button>
+      <div class="action-buttons">
+        <button class="ios-button collection" @click="navigateToCollection">
+          采集运行数据
+        </button>
+        
+        <button class="ios-button display" @click="navigateToDisplay">
+          开始展示
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -43,18 +49,18 @@ const navigateToDisplay = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .subway-image {
   width: 100%;
-  max-width: 800px;
-  margin-bottom: 2rem;
-  border-radius: 8px;
+  margin-bottom: 24px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .map-preview {
@@ -66,51 +72,31 @@ const navigateToDisplay = () => {
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
   width: 100%;
-  max-width: 400px;
 }
 
-.action-button {
+.ios-button {
+  height: 50px;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: white;
-  gap: 0.5rem;
+  transition: background-color 0.2s;
 }
 
-.action-button.collection {
-  background-color: #4CAF50;
+.ios-button.collection {
+  background-color: #34c759;
 }
 
-.action-button.display {
-  background-color: #2196F3;
+.ios-button.display {
+  background-color: #007aff;
 }
 
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.icon {
-  font-size: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .action-buttons {
-    flex-direction: row;
-    max-width: 600px;
-  }
-  
-  .action-button {
-    flex: 1;
-  }
+.ios-button:active {
+  opacity: 0.8;
+  transform: scale(0.98);
 }
 </style> 

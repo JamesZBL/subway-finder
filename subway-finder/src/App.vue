@@ -9,6 +9,19 @@ onMounted(() => {
   // 加载本地存储的数据
   subwayStore.loadRunningData()
   
+  // 添加适配移动设备的meta标签
+  const meta = document.createElement('meta')
+  meta.name = 'viewport'
+  meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+  document.head.appendChild(meta)
+  
+  // 禁止页面缩放
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault()
+    }
+  }, { passive: false })
+  
   // 测试Toast是否工作
   setTimeout(() => {
     toast.info('应用已加载完成')
@@ -18,52 +31,44 @@ onMounted(() => {
 
 <template>
   <div class="app-container">
-    <header class="app-header">
-      <h1 class="app-title">北京地铁线路</h1>
-    </header>
-    
-    <main class="app-content">
-      <router-view />
-    </main>
+    <router-view />
   </div>
 </template>
 
 <style>
 .app-container {
-  font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  min-height: 100vh;
+  color: #000000;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
 }
 
-.app-header {
-  background-color: #0052cc;
-  color: white;
-  padding: 1rem;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* iOS状态栏适配 */
+.status-bar-spacer {
+  height: env(safe-area-inset-top);
+  background-color: transparent;
 }
 
-.app-title {
-  margin: 0;
-  font-weight: 500;
-  font-size: 1.5rem;
+/* 适配iPhone X及以上机型的底部安全区域 */
+.bottom-safe-area {
+  height: env(safe-area-inset-bottom);
+  background-color: transparent;
 }
 
-.app-content {
-  flex: 1;
-  padding: 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-@media (max-width: 768px) {
-  .app-content {
-    padding: 0.5rem;
+@media (prefers-color-scheme: dark) {
+  .app-container {
+    color: #ffffff;
+    background-color: #000000;
   }
 }
 </style>

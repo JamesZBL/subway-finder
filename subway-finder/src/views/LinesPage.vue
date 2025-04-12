@@ -24,34 +24,9 @@ const handleLineSelect = (line) => {
 const goBack = () => {
   router.push('/')
 }
-</script>
 
-<template>
-  <div class="lines-container">
-    <div class="header-with-back">
-      <button class="back-button" @click="goBack">
-        <span>←</span>
-      </button>
-      <h2 class="page-title">{{ mode === 'collection' ? '选择要采集的线路' : '选择要展示的线路' }}</h2>
-    </div>
-
-    <div class="lines-grid">
-      <button 
-        v-for="line in subwayStore.lines" 
-        :key="line.id" 
-        class="line-button"
-        :style="{ backgroundColor: getLineColor(line.id) }"
-        @click="() => handleLineSelect(line)"
-      >
-        {{ line.name }}
-      </button>
-    </div>
-  </div>
-</template>
-
-<script>
 // 获取线路颜色
-function getLineColor(lineId) {
+const getLineColor = (lineId) => {
   const colors = {
     '1': '#CC0000',
     '2': '#0052CC',
@@ -77,70 +52,108 @@ function getLineColor(lineId) {
 }
 </script>
 
+<template>
+  <div class="fullscreen-page">
+    <div class="status-bar-spacer"></div>
+    
+    <div class="ios-navbar">
+      <div class="ios-back-button" @click="goBack">返回</div>
+      <h1>{{ mode === 'collection' ? '选择线路' : '选择线路' }}</h1>
+      <div style="width: 50px"></div>
+    </div>
+    
+    <div class="page-content">
+      <div class="ios-list">
+        <div 
+          v-for="line in subwayStore.lines" 
+          :key="line.id" 
+          class="line-item"
+          @click="() => handleLineSelect(line)"
+        >
+          <div class="line-color" :style="{ backgroundColor: getLineColor(line.id) }"></div>
+          <div class="line-name">{{ line.name }}</div>
+          <div class="chevron-right"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.lines-container {
-  padding: 1rem;
+.page-content {
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
-.header-with-back {
+.ios-list {
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: white;
+  margin-bottom: 16px;
+}
+
+.line-item {
+  padding: 14px 16px;
   display: flex;
   align-items: center;
-  margin-bottom: 1.5rem;
+  position: relative;
+  min-height: 44px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
-.back-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-right: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
+.line-item:last-child {
+  border-bottom: none;
 }
 
-.page-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
+.line-item:active {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.lines-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 1rem;
+.line-color {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  margin-right: 16px;
+  flex-shrink: 0;
 }
 
-.line-button {
-  padding: 1rem;
-  border: none;
-  border-radius: 8px;
-  color: white;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
+.line-name {
+  font-size: 17px;
+  font-weight: 400;
+  color: #000000;
+  flex: 1;
 }
 
-.line-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.chevron-right {
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #c7c7cc;
+  border-right: 2px solid #c7c7cc;
+  transform: rotate(45deg);
+  margin-left: 8px;
 }
 
-@media (max-width: 480px) {
-  .lines-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+@media (prefers-color-scheme: dark) {
+  .ios-list {
+    background-color: #1c1c1e;
   }
   
-  .line-button {
-    height: 60px;
-    font-size: 1rem;
+  .line-item {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .line-item:active {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .line-name {
+    color: #ffffff;
+  }
+  
+  .chevron-right {
+    border-color: #636366;
   }
 }
 </style> 

@@ -81,100 +81,138 @@ const goToHome = () => {
 </script>
 
 <template>
-  <div class="directions-container">
-    <div class="header-with-back">
-      <button class="back-button" @click="goBack">
-        <span>←</span>
-      </button>
-      <h2 class="page-title" v-if="subwayStore.currentLine">
-        {{ subwayStore.currentLine.name }}
-        <span>选择方向</span>
-      </h2>
-      
-      <button class="home-button" @click="goToHome" title="返回首页">
-        <span>🏠</span>
-      </button>
+  <div class="fullscreen-page">
+    <div class="status-bar-spacer"></div>
+    
+    <div class="ios-navbar">
+      <div class="ios-back-button" @click="goBack">返回</div>
+      <h1 v-if="subwayStore.currentLine">{{ subwayStore.currentLine.name }}</h1>
+      <div class="home-icon" @click="goToHome">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </div>
     </div>
     
-    <div class="directions-list">
-      <button 
-        v-for="direction in directions" 
-        :key="direction.id" 
-        class="direction-button"
-        :style="{ backgroundColor: getLineColor(props.lineId) }"
-        @click="() => handleDirectionSelect(direction)"
-      >
-        {{ direction.name }}
-      </button>
+    <div class="page-content">
+      <div class="directions-header">
+        <h2>选择方向</h2>
+      </div>
+      
+      <div class="ios-list">
+        <div 
+          v-for="direction in directions" 
+          :key="direction.id" 
+          class="direction-item"
+          @click="() => handleDirectionSelect(direction)"
+        >
+          <div class="direction-indicator" :style="{ backgroundColor: getLineColor(props.lineId) }"></div>
+          <div class="direction-name">{{ direction.name }}</div>
+          <div class="chevron-right"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.directions-container {
-  padding: 1rem;
+.page-content {
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
-.header-with-back {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1.5rem;
+.directions-header {
+  margin-bottom: 16px;
 }
 
-.back-button, .home-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  margin-right: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-}
-
-.home-button {
-  margin-left: auto;
-  background-color: #4CAF50;
-  color: white;
-  border-radius: 4px;
-  font-size: 1.2rem;
-}
-
-.page-title {
+.directions-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #000000;
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
 }
 
-.directions-list {
+.ios-list {
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: white;
+  margin-bottom: 16px;
+}
+
+.direction-item {
+  padding: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  position: relative;
+  min-height: 50px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
-.direction-button {
-  padding: 1.5rem;
-  border: none;
-  border-radius: 8px;
-  color: white;
+.direction-item:last-child {
+  border-bottom: none;
+}
+
+.direction-item:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.direction-indicator {
+  width: 6px;
+  height: 24px;
+  border-radius: 3px;
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.direction-name {
+  font-size: 17px;
   font-weight: 500;
+  color: #000000;
+  flex: 1;
+}
+
+.chevron-right {
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #c7c7cc;
+  border-right: 2px solid #c7c7cc;
+  transform: rotate(45deg);
+  margin-left: 8px;
+}
+
+.home-icon {
+  width: 22px;
+  height: 22px;
+  color: #007aff;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1.1rem;
-  text-align: center;
 }
 
-.direction-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-@media (max-width: 480px) {
-  .direction-button {
-    font-size: 1rem;
-    padding: 1.2rem;
+@media (prefers-color-scheme: dark) {
+  .directions-header h2 {
+    color: #ffffff;
+  }
+  
+  .ios-list {
+    background-color: #1c1c1e;
+  }
+  
+  .direction-item {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .direction-item:active {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .direction-name {
+    color: #ffffff;
+  }
+  
+  .chevron-right {
+    border-color: #636366;
   }
 }
 </style> 
