@@ -1,0 +1,77 @@
+{
+  "formatter": {
+    "indentSize": 2,
+    "useTabs": false
+  },
+  "linter": {
+    "enabled": true,
+    "eslint": {
+      "enabled": true,
+      "configFile": null
+    },
+    "stylelint": {
+      "enabled": false
+    }
+  },
+  "search": {
+    "exclude": [
+      "node_modules/**",
+      "dist/**",
+      ".git/**"
+    ]
+  },
+  "editor": {
+    "tabSize": 2,
+    "insertSpaces": true,
+    "detectIndentation": true,
+    "formatOnSave": true,
+    "formatOnPaste": false,
+    "defaultFormatter": "esbenp.prettier-vscode",
+    "trimTrailingWhitespace": true,
+    "insertFinalNewline": true
+  },
+  "files": {
+    "watcherExclude": {
+      "**/node_modules/**": true,
+      "**/dist/**": true
+    },
+    "exclude": [
+      "**/node_modules",
+      "**/dist",
+      "**/.git"
+    ],
+    "associations": {
+      "*.vue": "vue"
+    }
+  },
+  "vue": {
+    "validation": {
+      "template": true,
+      "style": true,
+      "script": true
+    },
+    "format": {
+      "enable": true,
+      "defaultFormatter": {
+        "js": "prettier",
+        "ts": "prettier"
+      }
+    }
+  },
+  "javascript": {
+    "preferences": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double"
+    },
+    "updateImportsOnFileMove": "always",
+    "suggest": {
+      "completeFunctionCalls": true,
+      "autoImports": true
+    }
+  },
+  "path-intellisense": {
+    "mappings": {
+      "@": "${workspaceFolder}/src"
+    }
+  }
+} 
