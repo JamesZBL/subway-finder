@@ -59,7 +59,7 @@ const getLineColor = (lineId) => {
     <div class="ios-navbar">
       <div class="ios-back-button" @click="goBack">返回</div>
       <h1>{{ mode === 'collection' ? '选择线路' : '选择线路' }}</h1>
-      <div style="width: 50px"></div>
+      <div style="width: 50px; visibility: hidden;">占位</div>
     </div>
     
     <div class="page-content">
@@ -101,6 +101,8 @@ const getLineColor = (lineId) => {
   position: relative;
   min-height: 44px;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+  background-color: transparent;
 }
 
 .line-item:last-child {
@@ -109,6 +111,16 @@ const getLineColor = (lineId) => {
 
 .line-item:active {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (hover: hover) {
+  .line-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .line-item:hover:active {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
 }
 
 .line-color {

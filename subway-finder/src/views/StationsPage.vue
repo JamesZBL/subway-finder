@@ -581,10 +581,27 @@ const getNextStation = (stationName) => {
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  transition: background-color 0.2s;
+  background-color: transparent;
 }
 
 .station-row:last-child {
   border-bottom: none;
+}
+
+.station-row:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 仅在支持悬停的设备上添加悬停效果 */
+@media (hover: hover) {
+  .station-row:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .station-row:hover:active {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
 }
 
 .station-name-display {

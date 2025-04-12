@@ -114,29 +114,47 @@ export const timetableData = {
  */
 export const getStandardRunningTime = (lineId, fromStation, toStation, directionId) => {
   // 如果线路不存在
-  if (!timetableData[lineId]) return null;
+  if (!timetableData[lineId]) {
+    console.log('线路不存在')
+    return null;
+  }
 
   // 获取方向数据
   const directions = timetableData[lineId].directions;
   const direction = directions.find(dir => dir.id === directionId);
-  if (!direction) return null;
+  if (!direction) {
+    console.log('方向不存在')
+    return null;
+  }
 
   // 查找两个站点在方向中的索引
   const stations = direction.stations;
   const fromIndex = stations.findIndex(station => station.name === fromStation);
   const toIndex = stations.findIndex(station => station.name === toStation);
 
+  console.log('fromIndex:', fromIndex, 'fromStation:', fromStation, 'toIndex:', toIndex, 'toStation:', toStation)
+
   // 如果站点不存在或不是相邻站点
-  if (fromIndex === -1 || toIndex === -1) return null;
-  if (Math.abs(fromIndex - toIndex) !== 1) return null;
+  if (fromIndex === -1 || toIndex === -1) {
+    console.log('站点不存在或不是相邻站点')
+    return null;
+  }
+  if (Math.abs(fromIndex - toIndex) !== 1) {
+    console.log('站点不是相邻站点')
+    return null;
+  }
 
   // 判断先后顺序，确保fromIndex < toIndex
   const startIndex = Math.min(fromIndex, toIndex);
   const endIndex = Math.max(fromIndex, toIndex);
 
+  console.log('startIndex:', startIndex, 'endIndex:', endIndex)
+
   // 获取两站的首班车时间差来计算标准运行时间
   const startStation = stations[startIndex];
   const endStation = stations[endIndex];
+
+  console.log('startStation:', startStation, 'endStation:', endStation)
 
   // 解析时间字符串为分钟数
   const parseTimeToMinutes = (timeStr) => {
@@ -144,16 +162,24 @@ export const getStandardRunningTime = (lineId, fromStation, toStation, direction
     return hours * 60 + minutes;
   };
 
+  console.log('startStation.firstTrain:', startStation.firstTrain, 'endStation.firstTrain:', endStation.firstTrain)
+
   const startFirstTrainMinutes = parseTimeToMinutes(startStation.firstTrain);
   const endFirstTrainMinutes = parseTimeToMinutes(endStation.firstTrain);
 
+  console.log('startFirstTrainMinutes:', startFirstTrainMinutes, 'endFirstTrainMinutes:', endFirstTrainMinutes)
+
   // 计算时间差（分钟）- 需要减去停车时间
   const grossDiffMinutes = endFirstTrainMinutes - startFirstTrainMinutes;
-  
+
+  console.log('grossDiffMinutes:', grossDiffMinutes)
+
   // 从总时间中减去起始站的停站时间（如果有）来获得纯行驶时间
   const stopTimeMinutes = startStation.stopTime ? startStation.stopTime / 60000 : 0;
   const netDiffMinutes = grossDiffMinutes - stopTimeMinutes;
-  
+
+  console.log('stopTimeMinutes:', stopTimeMinutes, 'netDiffMinutes:', netDiffMinutes)
+
   // 转换为毫秒
   return netDiffMinutes > 0 ? netDiffMinutes * 60 * 1000 : null;
 };

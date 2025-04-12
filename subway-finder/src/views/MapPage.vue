@@ -666,19 +666,58 @@ const switchLine = () => {
   })
 }
 
-// 调整缩放级别
-const adjustZoom = (amount) => {
-  const oldZoom = zoom.value
-  zoom.value = Math.max(0.5, Math.min(10, zoom.value + amount))
+// 地图放大缩小
+const adjustZoom = (delta) => {
+  zoom.value = Math.max(0.5, Math.min(5, zoom.value + delta));
+  // 强制重绘防止出现渲染问题
+  setTimeout(() => {
+    const mapElement = document.querySelector('.map-image');
+    if (mapElement) {
+      mapElement.style.display = 'none';
+      setTimeout(() => {
+        mapElement.style.display = '';
+      }, 10);
+    }
+  }, 100);
+}
+
+// 重置地图位置
+const resetMapPosition = () => {
+  zoom.value = 1;
+  mapOffsetX.value = 0;
+  mapOffsetY.value = 0;
+}
+
+// 开始拖动地图
+const startDragMap = (e) => {
+  isDragging.value = true;
+  startDragX.value = e.touches ? e.touches[0].clientX : e.clientX;
+  startDragY.value = e.touches ? e.touches[0].clientY : e.clientY;
+}
+
+// 拖动地图
+const dragMap = (e) => {
+  if (!isDragging.value) return;
   
-  // 改进22: 如果缩小到最小值，重置位置偏移
-  if (zoom.value <= 1 && oldZoom > 1) {
-    mapOffsetX.value = 0
-    mapOffsetY.value = 0
-  }
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   
-  const action = amount > 0 ? '放大' : '缩小'
-  toast.info(`地图${action}至${Math.round(zoom.value * 100)}%`, 2000)
+  const moveX = clientX - startDragX.value;
+  const moveY = clientY - startDragY.value;
+  
+  mapOffsetX.value += moveX;
+  mapOffsetY.value += moveY;
+  
+  startDragX.value = clientX;
+  startDragY.value = clientY;
+  
+  // 阻止默认行为防止页面滚动
+  e.preventDefault();
+}
+
+// 停止拖动地图
+const stopDragMap = () => {
+  isDragging.value = false;
 }
 
 // 切换显示详细信息
@@ -743,336 +782,59 @@ const progressText = computed(() => {
   return `${Math.round(currentPosition.value)}%`
 })
 
-// 改进22: 添加地图拖动功能的相关方法
-// 开始拖动地图
-const startDragMap = (event) => {
-  // 只有当地图放大时才允许拖动
-  if (zoom.value <= 1) return
-  
-  isDragging.value = true
-  
-  // 支持鼠标和触摸事件
-  if (event.type === 'touchstart') {
-    startDragX.value = event.touches[0].clientX - mapOffsetX.value
-    startDragY.value = event.touches[0].clientY - mapOffsetY.value
-  } else {
-    startDragX.value = event.clientX - mapOffsetX.value
-    startDragY.value = event.clientY - mapOffsetY.value
-    // 改变鼠标样式
-    document.body.style.cursor = 'grabbing'
-  }
-}
-
-// 拖动地图
-const dragMap = (event) => {
-  if (!isDragging.value) return
-  
-  // 阻止默认行为，防止在拖动时滚动页面
-  event.preventDefault()
-  
-  // 计算新的偏移量
-  if (event.type === 'touchmove') {
-    mapOffsetX.value = event.touches[0].clientX - startDragX.value
-    mapOffsetY.value = event.touches[0].clientY - startDragY.value
-  } else {
-    mapOffsetX.value = event.clientX - startDragX.value
-    mapOffsetY.value = event.clientY - startDragY.value
-  }
-}
-
-// 停止拖动地图
-const stopDragMap = () => {
-  if (!isDragging.value) return
-  
-  isDragging.value = false
-  
-  // 恢复鼠标样式
-  document.body.style.cursor = 'default'
-}
-
-// 重置地图位置
-const resetMapPosition = () => {
-  mapOffsetX.value = 0
-  mapOffsetY.value = 0
-  zoom.value = 1
-  toast.info('重置地图位置', 2000)
-}
-
-// 改进27: 计算全程预计到达时间
-const calculateFullRouteEstimate = () => {
-  if (!lineId.value || !direction.value || !currentStation.value) {
-    console.log('缺少必要数据，无法计算全程预计时间')
-    return []
-  }
-  
-  const result = []
-  const now = new Date().getTime()
-  let lastDepartureTime = null
-  let startPointTime = null
-  
-  // 获取方向上的所有站点
-  const allStations = getStationsForDirection(lineId.value, direction.value)
-  if (!allStations || allStations.length === 0) {
-    console.log('无法获取站点列表')
-    return []
-  }
-  
-  // 设置起始计算点
-  if (eventTypeCode.value === 1) { // 当前在停车
-    // 当前时间作为基准点
-    startPointTime = now
-  } else if (eventTypeCode.value === 2 && startTime.value) { // 当前在行驶
-    // 起步时间作为基准点
-    startPointTime = startTime.value
-  } else {
-    // 无法计算
-    console.log('当前状态不明确，无法计算全程预计时间')
-    return []
-  }
-  
-  // 遍历所有站点，计算到达和发车时间
-  for (let i = 0; i < allStations.length; i++) {
-    const station = allStations[i]
-    const stationInfo = {
-      name: station.name,
-      arrivalTime: '未知',
-      departureTime: '未知'
-    }
-    
-    if (i === currentStationIndex.value) {
-      // 如果是当前站点
-      stationInfo.arrivalTime = '当前站点'
-      
-      // 如果当前是停车状态，计算发车时间
-      if (eventTypeCode.value === 1 && startTime.value) {
-        // 获取平均停车时间
-        let stopTime = 30 * 1000 // 默认30秒
-        const avgStopTime = subwayStore.calculateAverageStopTimeAtStation(
-          lineId.value,
-          station.name,
-          direction.value
-        )
-        if (avgStopTime) {
-          stopTime = avgStopTime
-        }
-        
-        const now = new Date().getTime()
-        const elapsedTime = now - startTime.value
-        const remainingTime = Math.max(0, stopTime - elapsedTime)
-        
-        if (remainingTime <= 0) {
-          stationInfo.departureTime = '即将发车'
-        } else {
-          // 改进28: 使用格式化函数确保时间格式正确
-          const departureTime = new Date(now + remainingTime)
-          stationInfo.departureTime = formatTimeWithSeconds(departureTime)
-          lastDepartureTime = departureTime.getTime()
-        }
-      } 
-      // 如果是行驶状态，那么这站已经发车
-      else if (eventTypeCode.value === 2) {
-        stationInfo.departureTime = '已发车'
-        lastDepartureTime = startTime.value || startPointTime
-      }
-      // 如果既不是停车也不是行驶状态，可能是刚初始化
-      else {
-        stationInfo.departureTime = '未知'
-      }
-    }
-    // 如果是下一站，并且当前是行驶状态，计算到达时间
-    else if (i === nextStationIndex.value && eventTypeCode.value === 2 && startTime.value) {
-      // 改进35: 优先使用时刻表数据计算预计到达时间
-      let runningTime = null;
-      
-      // 尝试从时刻表获取标准运行时间
-      const standardTime = getStandardRunningTime(
-        lineId.value,
-        currentStation.value.name,
-        nextStation.value.name,
-        direction.value
-      )
-      
-      if (standardTime) {
-        runningTime = standardTime
-      } else {
-        // 尝试从历史数据获取平均运行时间
-        runningTime = subwayStore.calculateAverageTimeBetweenStations(
-          lineId.value,
-          currentStation.value.name,
-          nextStation.value.name,
-          direction.value
-        )
-        
-        if (!runningTime) {
-          // 如果无法获取历史数据，使用默认90秒
-          runningTime = 90 * 1000
-        }
-      }
-      
-      const now = new Date().getTime()
-      const elapsedTime = now - startTime.value
-      const remainingTime = Math.max(0, runningTime - elapsedTime)
-      
-      if (remainingTime <= 0) {
-        stationInfo.arrivalTime = '即将到站'
-      } else {
-        // 改进28: 使用格式化函数确保时间格式正确
-        const arrivalTime = new Date(now + remainingTime)
-        stationInfo.arrivalTime = formatTimeWithSeconds(arrivalTime)
-        
-        // 默认停站30秒
-        const departureTime = new Date(arrivalTime.getTime() + 30000)
-        stationInfo.departureTime = formatTimeWithSeconds(departureTime)
-        lastDepartureTime = departureTime.getTime()
-      }
-    }
-    // 如果是后续站点，且有前一站的发车时间，则可以计算
-    else if (i > nextStationIndex.value && lastDepartureTime) {
-      let totalRunningTime = null
-      
-      // 改进35: 优先使用时刻表计算总运行时间
-      if (eventTypeCode.value === 2 && startTime.value) {
-        // 如果是行驶状态，需要考虑到已经行驶的时间
-        // 计算从当前站到目标站的总运行时间
-        const intermediateStations = allStations.slice(currentStationIndex.value, i + 1)
-        let totalTime = 0
-        
-        // 计算各段运行时间
-        for (let j = 0; j < intermediateStations.length - 1; j++) {
-          const fromSt = intermediateStations[j].name
-          const toSt = intermediateStations[j + 1].name
-          
-          // 改进35: 优先使用时刻表数据
-          const segmentTime = getStandardRunningTime(lineId.value, fromSt, toSt, direction.value) || 
-                          subwayStore.calculateAverageTimeBetweenStations(lineId.value, fromSt, toSt, direction.value) ||
-                          (3 * 60 * 1000) // 默认3分钟
-          
-          totalTime += segmentTime
-          
-          // 如果不是最后一站，加上停站时间（默认30秒）
-          if (j < intermediateStations.length - 2) {
-            totalTime += 30000
-          }
-        }
-        
-        // 计算已经行驶的时间
-        const now = new Date().getTime()
-        const elapsedTime = now - startTime.value
-        
-        // 减去已行驶时间
-        totalRunningTime = Math.max(0, totalTime - elapsedTime)
-      } else {
-        // 如果是其他状态或无起步时间，则从上一个有发车时间的站计算
-        const prevStationIndex = result.findIndex(item => item.departureTime !== '未知' && item.departureTime !== '已发车')
-        
-        if (prevStationIndex !== -1) {
-          const prevStation = allStations[prevStationIndex]
-          
-          // 改进35: 优先使用时刻表数据计算总运行时间
-          totalRunningTime = getTotalRunningTime(lineId.value, prevStation.name, station.name, direction.value)
-          
-          if (!totalRunningTime) {
-            // 如果无法从时刻表获取，使用默认值
-            totalRunningTime = (i - prevStationIndex) * 3 * 60 * 1000  // 每站默认3分钟
-          }
-        }
-      }
-      
-      if (totalRunningTime !== null) {
-        const baseTime = lastDepartureTime
-        // 改进28: 使用格式化函数确保时间格式正确
-        const arrivalTime = new Date(baseTime + totalRunningTime)
-        stationInfo.arrivalTime = formatTimeWithSeconds(arrivalTime)
-        
-        // 如果不是终点站，计算发车时间（默认停站30秒）
-        if (i < allStations.length - 1) {
-          // 改进28: 使用格式化函数确保时间格式正确
-          const departureTime = new Date(arrivalTime.getTime() + 30000)
-          stationInfo.departureTime = formatTimeWithSeconds(departureTime)
-          lastDepartureTime = departureTime.getTime()
-        } else {
-          stationInfo.departureTime = '终点站'
-        }
-      }
-    }
-    
-    result.push(stationInfo)
-  }
-  
-  return result
-}
-
-// 切换显示全程估算时间
-const toggleFullRouteEstimate = () => {
-  showFullRouteEstimate.value = !showFullRouteEstimate.value
-  
-  if (showFullRouteEstimate.value) {
-    // 计算全程预计到达时间
-    fullRouteEstimate.value = calculateFullRouteEstimate()
-    toast.info('显示全程运行时间估算', 2000)
-  } else {
-    toast.info('隐藏全程运行时间估算', 2000)
-  }
-}
-
-// 改进27: 更新估算时间，实时反映最新数据
-const updateFullRouteEstimate = computed(() => {
-  // 使用计数器触发更新
-  const refreshTrigger = timeRefresher.value
-  
-  if (showFullRouteEstimate.value) {
-    fullRouteEstimate.value = calculateFullRouteEstimate()
-  }
-  
-  return fullRouteEstimate.value
+// 添加mapImageSrc计算属性
+const mapImageSrc = computed(() => {
+  return '/images/Beijing Rail Transit Lines.png'
 })
 
-// 修改calculateTrainPosition计算方法，确保正确计算位置
-const calculateTrainPosition = computed(() => {
-  if (!currentStation.value || !nextStation.value) {
-    // 如果缺少站点信息，使用当前站点坐标
-    console.log('缺少站点信息，使用当前站点坐标', currentStation.value)
-    return currentStation.value ? currentStation.value.position : [0, 0]
-  }
-
-  // 获取当前站点和下一站点坐标
-  const currentPos = currentStation.value.position
-  const nextPos = nextStation.value.position
+// 列车位置计算
+const currentTrainPosition = computed(() => {
+  // 模拟站点坐标数据 - 在实际应用中应该从数据源获取
+  const stationPositions = {
+    // 这里是示例坐标，实际应用中应该替换为真实的地图坐标
+    '公益西桥': { x: 500, y: 300 },
+    '新宫': { x: 550, y: 300 },
+    '西红门': { x: 600, y: 300 },
+    '高米店南': { x: 650, y: 300 },
+    '高米店北': { x: 700, y: 300 },
+    '枣园': { x: 750, y: 300 },
+    '清源路': { x: 800, y: 300 },
+    '黄村西大街': { x: 850, y: 300 },
+    '黄村火车站': { x: 900, y: 300 },
+    '义和庄': { x: 950, y: 300 },
+    '生物医药基地': { x: 1000, y: 300 },
+    '天宫院': { x: 1050, y: 300 }
+  };
   
-  // 如果坐标无效，返回默认值
-  if (!currentPos || !currentPos[0] || !currentPos[1]) {
-    console.log('当前站点坐标无效', currentStation.value.name, currentPos)
-    return [0, 0]
+  if (!currentStation.value) return null;
+  
+  const currentStationName = currentStation.value.name;
+  const currentPos = stationPositions[currentStationName];
+  
+  if (!currentPos) return null;
+  
+  // 如果是停车状态，直接返回当前站点位置
+  if (eventTypeCode.value === 1 || isTerminalStation.value) {
+    return currentPos;
   }
   
-  // 如果下一站坐标无效且不是终点站，使用当前站点坐标
-  if ((!nextPos || !nextPos[0] || !nextPos[1]) && !isTerminalStation.value) {
-    console.log('下一站点坐标无效', nextStation.value.name, nextPos)
-    return currentPos
+  // 如果是行驶状态，计算列车在两站之间的位置
+  if (eventTypeCode.value === 2 && nextStation.value) {
+    const nextStationName = nextStation.value.name;
+    const nextPos = stationPositions[nextStationName];
+    
+    if (!nextPos) return currentPos;
+    
+    // 根据进度计算列车位置
+    const progress = currentPosition.value / 100;
+    const x = currentPos.x + (nextPos.x - currentPos.x) * progress;
+    const y = currentPos.y + (nextPos.y - currentPos.y) * progress;
+    
+    return { x, y };
   }
   
-  console.log('计算列车实际位置', currentPos, nextPos, currentPosition.value)
-
-  // 如果当前处于终点站
-  if (isTerminalStation.value) {
-    console.log('当前处于终点站，返回当前站点坐标', currentPos)
-    return currentPos
-  }
-  
-  // 计算列车实际位置
-  // 根据当前百分比计算列车在两站之间的位置
-  if (eventTypeCode.value === 2) { // 在行驶中
-    // 计算插值的坐标
-    const x = currentPos[0] + (nextPos[0] - currentPos[0]) * currentPosition.value / 100
-    const y = currentPos[1] + (nextPos[1] - currentPos[1]) * currentPosition.value / 100
-    console.log('计算列车实际位置', x, y)
-    return [x, y]
-  } else {
-    // 停车中，直接返回当前站点坐标
-    console.log('当前处于停车状态，返回当前站点坐标', currentPos)
-    return currentPos
-  }
-})
+  return currentPos;
+});
 </script>
 
 <template>
@@ -1083,11 +845,14 @@ const calculateTrainPosition = computed(() => {
     <div class="ios-navbar">
       <div class="ios-back-button" @click="goBack">返回</div>
       <h1 v-if="subwayStore.currentLine">{{ subwayStore.currentLine.name }}</h1>
-      <div class="home-icon" @click="goToHome">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
+      <div style="width: 65px; visibility: hidden;">占位</div>
+      <div class="navbar-right" style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center;">
+        <div class="home-icon" @click="goToHome">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
       </div>
     </div>
     
@@ -1174,7 +939,7 @@ const calculateTrainPosition = computed(() => {
               backgroundColor: lineColor
             }"
           ></div>
-        </div>
+      </div>
       </div>
       
       <!-- 地图控制按钮组 -->
@@ -1264,7 +1029,7 @@ const calculateTrainPosition = computed(() => {
       <div class="panel-header">
         <h3>全程运行时间估算</h3>
         <button class="close-button" @click="toggleFullRouteEstimate">✕</button>
-      </div>
+        </div>
       <div class="estimate-content">
         <div class="estimate-note">注：时间估算基于历史数据，仅供参考</div>
         <table class="estimate-table">
@@ -1294,8 +1059,8 @@ const calculateTrainPosition = computed(() => {
             </tr>
           </tbody>
         </table>
-      </div>
-    </div>
+          </div>
+        </div>
     
     <div class="bottom-safe-area"></div>
   </div>
@@ -1440,6 +1205,7 @@ const calculateTrainPosition = computed(() => {
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   background-color: white;
+  min-height: 300px;
 }
 
 .map-wrapper {
@@ -1447,6 +1213,7 @@ const calculateTrainPosition = computed(() => {
   height: 100%;
   overflow: hidden;
   position: relative;
+  touch-action: none;
 }
 
 .map-image {
@@ -1456,23 +1223,42 @@ const calculateTrainPosition = computed(() => {
   width: 100%;
   height: 100%;
   will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .subway-map {
   width: 100%;
-  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
   object-fit: contain;
+  image-rendering: -webkit-optimize-contrast; /* Chrome, Safari */
+  image-rendering: crisp-edges; /* Firefox */
 }
 
 .train-marker {
   position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   background-color: #007aff;
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
   z-index: 10;
+  animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.2);
+    box-shadow: 0 0 0 5px rgba(0, 122, 255, 0.15);
+  }
 }
 
 .map-controls {
@@ -1725,13 +1511,13 @@ const calculateTrainPosition = computed(() => {
   .close-button {
     background-color: #3a3a3c;
     color: #ffffff;
-  }
-  
-  .current-station-row {
+}
+
+.current-station-row {
     background-color: rgba(10, 132, 255, 0.2);
-  }
-  
-  .next-station-row {
+}
+
+.next-station-row {
     background-color: rgba(48, 209, 88, 0.2);
   }
 }

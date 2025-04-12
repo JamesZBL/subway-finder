@@ -87,11 +87,13 @@ const goToHome = () => {
     <div class="ios-navbar">
       <div class="ios-back-button" @click="goBack">返回</div>
       <h1 v-if="subwayStore.currentLine">{{ subwayStore.currentLine.name }}</h1>
-      <div class="home-icon" @click="goToHome">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
+      <div class="navbar-right" style="width: 65px; display: flex; justify-content: flex-end;">
+        <div class="home-icon" @click="goToHome">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
       </div>
     </div>
     
@@ -149,6 +151,8 @@ const goToHome = () => {
   position: relative;
   min-height: 50px;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+  background-color: transparent;
 }
 
 .direction-item:last-child {
@@ -157,6 +161,17 @@ const goToHome = () => {
 
 .direction-item:active {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 仅在支持悬停的设备上添加悬停效果 */
+@media (hover: hover) {
+  .direction-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  .direction-item:hover:active {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
 }
 
 .direction-indicator {

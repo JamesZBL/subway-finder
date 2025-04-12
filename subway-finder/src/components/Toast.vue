@@ -54,9 +54,9 @@ onBeforeUnmount(() => {
 /* 全局样式，确保toast容器正确显示 */
 .toast-container {
   position: fixed;
-  top: 20px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 10000;
   pointer-events: none;
 }
@@ -66,34 +66,35 @@ onBeforeUnmount(() => {
 .toast {
   position: relative;
   max-width: 80vw;
-  padding: 10px 20px;
-  border-radius: 4px;
+  padding: 12px 24px;
+  border-radius: 8px;
   color: white;
-  font-size: 1rem;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(4px);
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   pointer-events: none;
   margin-bottom: 10px;
+  text-align: center;
 }
 
 .toast-info {
-  background-color: rgba(0, 125, 255, 0.9);
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 .toast-success {
-  background-color: rgba(40, 167, 69, 0.9);
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 .toast-warning {
-  background-color: rgba(255, 193, 7, 0.9);
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 .toast-error {
-  background-color: rgba(220, 53, 69, 0.9);
+  background-color: rgba(0, 0, 0, 0.9);
 }
 
 .toast-fade-enter-active,
@@ -104,14 +105,15 @@ onBeforeUnmount(() => {
 .toast-fade-enter-from,
 .toast-fade-leave-to {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(0);
+  scale: 0.9;
 }
 
 @media (max-width: 768px) {
   .toast {
     max-width: 90vw;
-    font-size: 0.9rem;
-    padding: 8px 16px;
+    font-size: 15px;
+    padding: 10px 20px;
   }
 }
 </style> 
