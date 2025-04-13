@@ -268,33 +268,111 @@ button {
 
 /* 在CSS中为暗色模式覆盖样式，确保即使系统处于暗色模式，应用也会保持浅色样式 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* 基础样式 */
+  :root, body, html, #app, .app-container {
     color: #000000 !important;
     background-color: #f2f2f7 !important;
   }
   
+  /* 导航和标签栏 */
   .ios-navbar, .ios-tab-bar {
     background-color: rgba(255, 255, 255, 0.85) !important;
     border-color: rgba(0, 0, 0, 0.1) !important;
   }
   
-  .ios-card, .ios-list {
+  /* 卡片和列表 */
+  .ios-card, .ios-list, .map-modal-content, .station-status-card, .map-section, .details-section {
     background-color: white !important;
   }
   
-  .ios-list-item {
+  /* 列表项和边框 */
+  .ios-list-item, .line-item, .direction-item, .station-row {
     border-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: transparent !important;
   }
   
-  button {
+  .ios-list-item:active, .line-item:active, .direction-item:active {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  /* 按钮样式 */
+  button, .ios-button {
     background-color: #007aff !important;
   }
   
+  /* 页面容器 */
   .fullscreen-page {
     background-color: #f2f2f7 !important;
   }
   
+  /* 页面内容 */
   .page-content {
     background-color: #f2f2f7 !important;
+  }
+  
+  /* 文本颜色 */
+  h1, h2, h3, p, .line-name, .direction-name, .station-name, .directions-header h2, .status-text, .direction-info {
+    color: #000000 !important;
+  }
+  
+  /* 图标颜色 */
+  .home-icon, .ios-back-button, .ios-tab-item.active {
+    color: #007aff !important;
+  }
+  
+  /* 特殊组件 */
+  .map-modal-header {
+    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .close-button {
+    background-color: #f1f1f1 !important;
+    color: #8e8e93 !important;
+  }
+  
+  .zoom-button {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+  }
+  
+  .zoom-button:active {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+  }
+  
+  .chevron-right {
+    border-color: #c7c7cc !important;
+  }
+  
+  .current-status {
+    background-color: #f0f0f0 !important;
+  }
+  
+  .progress-bar {
+    background-color: #e0e0e0 !important;
+  }
+  
+  .time-info {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .app-intro-text {
+    color: #3a3a3c !important;
+  }
+  
+  .current-station-row {
+    background-color: rgba(0, 122, 255, 0.2) !important;
+  }
+  
+  .next-station-row {
+    background-color: rgba(52, 199, 89, 0.2) !important;
+  }
+  
+  .records-table th, .estimate-table th,
+  .records-table td, .estimate-table td {
+    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .panel-header {
+    background-color: rgba(255, 255, 255, 0.85) !important;
   }
 }

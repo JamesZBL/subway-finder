@@ -204,30 +204,4 @@ const goToHome = () => {
   color: #007aff;
   cursor: pointer;
 }
-
-@media (prefers-color-scheme: dark) {
-  .directions-header h2 {
-    color: #ffffff;
-  }
-  
-  .ios-list {
-    background-color: #1c1c1e;
-  }
-  
-  .direction-item {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .direction-item:active {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .direction-name {
-    color: #ffffff;
-  }
-  
-  .chevron-right {
-    border-color: #636366;
-  }
-}
 </style> 

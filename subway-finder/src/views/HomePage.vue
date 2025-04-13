@@ -623,37 +623,10 @@ const resetMapZoom = () => {
 
 .zoom-button:active {
   transform: scale(0.95);
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(80, 80, 80, 0.9);
 }
 
 .reset-button {
   font-size: 16px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .app-intro-text {
-    color: #e5e5ea;
-  }
-  
-  .map-modal-content {
-    background-color: #1c1c1e;
-  }
-  
-  .map-modal-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .close-button {
-    background-color: #2c2c2e;
-    color: #8e8e93;
-  }
-  
-  .zoom-button {
-    background-color: rgba(60, 60, 60, 0.8);
-  }
-  
-  .zoom-button:active {
-    background-color: rgba(80, 80, 80, 0.9);
-  }
 }
 </style> 

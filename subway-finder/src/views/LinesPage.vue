@@ -146,26 +146,4 @@ const getLineColor = (lineId) => {
   transform: rotate(45deg);
   margin-left: 8px;
 }
-
-@media (prefers-color-scheme: dark) {
-  .ios-list {
-    background-color: #1c1c1e;
-  }
-  
-  .line-item {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .line-item:active {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .line-name {
-    color: #ffffff;
-  }
-  
-  .chevron-right {
-    border-color: #636366;
-  }
-}
 </style> 

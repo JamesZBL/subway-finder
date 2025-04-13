@@ -642,26 +642,4 @@ const getNextStation = (stationName) => {
   height: 22px;
   color: #007aff;
 }
-
-@media (prefers-color-scheme: dark) {
-  .direction-info {
-    color: #ffffff;
-  }
-  
-  .status-text {
-    color: #ffffff;
-  }
-  
-  .station-name {
-    color: #0a84ff;
-  }
-  
-  .time-info {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .station-row {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-}
 </style> 
