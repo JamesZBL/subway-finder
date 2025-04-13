@@ -5,6 +5,39 @@ import toast from './utils/toast'
 
 const subwayStore = useSubwayStore()
 
+// 进入全屏模式函数
+const enterFullscreen = () => {
+  const element = document.documentElement;
+  
+  // 尝试不同的全屏API
+  if (element.requestFullscreen) {
+    element.requestFullscreen();
+  } else if (element.webkitRequestFullscreen) {
+    element.webkitRequestFullscreen();
+  } else if (element.mozRequestFullScreen) {
+    element.mozRequestFullScreen();
+  } else if (element.msRequestFullscreen) {
+    element.msRequestFullscreen();
+  }
+};
+
+// 处理全屏状态变化
+const handleFullscreenChange = () => {
+  if (!document.fullscreenElement && 
+      !document.webkitFullscreenElement && 
+      !document.mozFullScreenElement && 
+      !document.msFullscreenElement) {
+    // 尝试在退出全屏时自动重新进入
+    setTimeout(() => {
+      try {
+        enterFullscreen();
+      } catch (e) {
+        console.log('自动进入全屏失败:', e);
+      }
+    }, 1000);
+  }
+};
+
 onMounted(() => {
   // 加载本地存储的数据
   subwayStore.loadRunningData()
@@ -30,6 +63,22 @@ onMounted(() => {
       e.preventDefault()
     }
   }, { passive: false })
+  
+  // 监听全屏状态变化
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+  
+  // 首次尝试进入全屏模式
+  try {
+    // 用户首次交互后尝试进入全屏
+    document.addEventListener('click', () => {
+      enterFullscreen();
+    }, { once: true });
+  } catch (e) {
+    console.log('全屏初始化失败:', e);
+  }
   
   // 测试Toast是否工作
   setTimeout(() => {
@@ -61,6 +110,11 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   overflow: hidden;
+  /* 更好的全屏体验 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* iOS状态栏适配 */

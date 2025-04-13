@@ -32,6 +32,63 @@ if (window.matchMedia) {
   colorSchemeQuery.addEventListener('change', forceLight)
 }
 
+// 全屏模式处理函数
+const enterFullscreen = () => {
+  const element = document.documentElement;
+  
+  // 尝试不同的全屏API
+  const requestFullscreen = element.requestFullscreen || 
+                           element.webkitRequestFullscreen || 
+                           element.mozRequestFullScreen || 
+                           element.msRequestFullscreen;
+  
+  if (requestFullscreen) {
+    requestFullscreen.call(element).catch((err) => {
+      console.error('无法进入全屏模式:', err);
+    });
+  }
+};
+
+// 检测全屏状态变化
+const setupFullscreenListeners = () => {
+  const fullscreenChangeHandler = () => {
+    if (!document.fullscreenElement && 
+        !document.webkitFullscreenElement && 
+        !document.mozFullScreenElement && 
+        !document.msFullscreenElement) {
+      // 如果退出全屏，尝试重新进入
+      setTimeout(enterFullscreen, 1000);
+    }
+  };
+  
+  // 监听各种全屏变化事件
+  document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+  document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+  document.addEventListener('mozfullscreenchange', fullscreenChangeHandler);
+  document.addEventListener('MSFullscreenChange', fullscreenChangeHandler);
+};
+
+// 用户交互后尝试进入全屏
+const setupUserInteractionListener = () => {
+  const interactionEvents = ['click', 'touchstart', 'keydown'];
+  
+  const interactionHandler = () => {
+    enterFullscreen();
+    // 移除事件监听器，避免重复触发
+    interactionEvents.forEach(event => {
+      document.removeEventListener(event, interactionHandler);
+    });
+    
+    // 设置全屏变化检测
+    setupFullscreenListeners();
+  };
+  
+  // 添加用户交互事件监听
+  interactionEvents.forEach(event => {
+    document.addEventListener(event, interactionHandler, { once: true });
+  });
+};
+
 // 全局Toast插件
 import Toast from './components/Toast.vue'
 import toast from './utils/toast'
@@ -54,3 +111,8 @@ app.config.globalProperties.$toast = toast
 
 // 挂载应用
 app.mount('#app')
+
+// 在DOM加载完成后设置全屏模式
+document.addEventListener('DOMContentLoaded', () => {
+  setupUserInteractionListener();
+});
