@@ -37,8 +37,11 @@ const routes = [
   }
 ]
 
+// 获取基础路径，用于GitHub Pages部署
+const base = import.meta.env.BASE_URL || '/subway-finder/'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(base),
   routes
 })
 

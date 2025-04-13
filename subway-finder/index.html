@@ -2,15 +2,41 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/subway-finder/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="format-detection" content="telephone=no,email=no,address=no" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <title>北京地铁线路查找器</title>
+    <!-- 处理GitHub Pages的SPA路由 -->
+    <script type="text/javascript">
+      // 从URL参数中获取重定向路径
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect != location.href) {
+          history.replaceState(null, null, redirect);
+        }
+        
+        // 处理来自404页面的重定向
+        var l = window.location;
+        var search = l.search;
+        if (search && search.includes('p=/')) {
+          var q = {};
+          var parts = search.substring(1).split('&');
+          for (var i = 0; i < parts.length; i++) {
+            var pair = parts[i].split('=');
+            q[pair[0]] = decodeURIComponent(pair[1] || '');
+          }
+          if (q.p) {
+            history.replaceState(null, null, q.p + (q.q ? ('?' + q.q) : '') + l.hash);
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/subway-finder/src/main.js"></script>
   </body>
 </html>

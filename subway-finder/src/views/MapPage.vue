@@ -835,6 +835,217 @@ const currentTrainPosition = computed(() => {
   
   return currentPos;
 });
+
+// 切换显示全程估算时间
+const toggleFullRouteEstimate = () => {
+  showFullRouteEstimate.value = !showFullRouteEstimate.value
+  
+  if (showFullRouteEstimate.value) {
+    // 计算全程预计到达时间
+    fullRouteEstimate.value = calculateFullRouteEstimate()
+  }
+}
+
+// 计算全程预计到达时间
+const calculateFullRouteEstimate = () => {
+  if (!lineId.value || !direction.value || !currentStation.value) {
+    console.log('缺少必要数据，无法计算全程预计时间')
+    return []
+  }
+  
+  const result = []
+  const now = new Date().getTime()
+  let lastDepartureTime = null
+  let startPointTime = null
+  
+  // 获取方向上的所有站点
+  const allStations = getStationsForDirection(lineId.value, direction.value)
+  if (!allStations || allStations.length === 0) {
+    console.log('无法获取站点列表')
+    return []
+  }
+  
+  // 设置起始计算点
+  if (eventTypeCode.value === 1) { // 当前在停车
+    // 当前时间作为基准点
+    startPointTime = now
+  } else if (eventTypeCode.value === 2 && startTime.value) { // 当前在行驶
+    // 起步时间作为基准点
+    startPointTime = startTime.value
+  } else {
+    // 无法计算
+    console.log('当前状态不明确，无法计算全程预计时间')
+    return []
+  }
+  
+  // 遍历所有站点，计算到达和发车时间
+  for (let i = 0; i < allStations.length; i++) {
+    const station = allStations[i]
+    const stationInfo = {
+      name: station.name,
+      arrivalTime: '未知',
+      departureTime: '未知',
+      isCurrentStation: i === currentStationIndex.value,
+      isNextStation: i === nextStationIndex.value
+    }
+    
+    if (i === currentStationIndex.value) {
+      // 如果是当前站点
+      stationInfo.arrivalTime = '当前站点'
+      
+      // 如果当前是停车状态，计算发车时间
+      if (eventTypeCode.value === 1 && startTime.value) {
+        // 获取平均停车时间
+        let stopTime = 30 * 1000 // 默认30秒
+        const avgStopTime = subwayStore.calculateAverageStopTimeAtStation(
+          lineId.value,
+          station.name,
+          direction.value
+        )
+        if (avgStopTime) {
+          stopTime = avgStopTime
+        }
+        
+        const elapsedTime = now - startTime.value
+        const remainingTime = Math.max(0, stopTime - elapsedTime)
+        
+        if (remainingTime <= 0) {
+          stationInfo.departureTime = '即将发车'
+        } else {
+          // 使用格式化函数确保时间格式正确
+          const departureTime = new Date(now + remainingTime)
+          stationInfo.departureTime = formatTimeWithSeconds(departureTime)
+          lastDepartureTime = departureTime.getTime()
+        }
+      } 
+      // 如果是行驶状态，那么这站已经发车
+      else if (eventTypeCode.value === 2) {
+        stationInfo.departureTime = '已发车'
+        lastDepartureTime = startTime.value || startPointTime
+      }
+      // 如果既不是停车也不是行驶状态，可能是刚初始化
+      else {
+        stationInfo.departureTime = '未知'
+      }
+    }
+    // 如果是下一站，并且当前是行驶状态，计算到达时间
+    else if (i === nextStationIndex.value && eventTypeCode.value === 2 && startTime.value) {
+      // 优先使用时刻表数据计算预计到达时间
+      let runningTime = null;
+      
+      // 尝试从时刻表获取标准运行时间
+      const standardTime = getStandardRunningTime(
+        lineId.value,
+        currentStation.value.name,
+        nextStation.value.name,
+        direction.value
+      )
+      
+      if (standardTime) {
+        runningTime = standardTime
+      } else {
+        // 尝试从历史数据获取平均运行时间
+        runningTime = subwayStore.calculateAverageTimeBetweenStations(
+          lineId.value,
+          currentStation.value.name,
+          nextStation.value.name,
+          direction.value
+        )
+        
+        if (!runningTime) {
+          // 如果无法获取历史数据，使用默认90秒
+          runningTime = 90 * 1000
+        }
+      }
+      
+      const elapsedTime = now - startTime.value
+      const remainingTime = Math.max(0, runningTime - elapsedTime)
+      
+      if (remainingTime <= 0) {
+        stationInfo.arrivalTime = '即将到站'
+      } else {
+        // 使用格式化函数确保时间格式正确
+        const arrivalTime = new Date(now + remainingTime)
+        stationInfo.arrivalTime = formatTimeWithSeconds(arrivalTime)
+        
+        // 默认停站30秒
+        const departureTime = new Date(arrivalTime.getTime() + 30000)
+        stationInfo.departureTime = formatTimeWithSeconds(departureTime)
+        lastDepartureTime = departureTime.getTime()
+      }
+    }
+    // 如果是后续站点，且有前一站的发车时间，则可以计算
+    else if (i > nextStationIndex.value && lastDepartureTime) {
+      // 默认运行时间3分钟
+      const defaultRunningTime = 3 * 60 * 1000
+      // 计算从上一站到此站的运行时间
+      let runningTime = defaultRunningTime
+      
+      // 尝试获取历史数据
+      if (i > 0) {
+        const prevStation = allStations[i-1]
+        // 尝试从时刻表获取标准运行时间
+        const standardTime = getStandardRunningTime(
+          lineId.value,
+          prevStation.name,
+          station.name,
+          direction.value
+        )
+        
+        if (standardTime) {
+          runningTime = standardTime
+        } else {
+          // 尝试从历史数据获取平均运行时间
+          const avgTime = subwayStore.calculateAverageTimeBetweenStations(
+            lineId.value,
+            prevStation.name,
+            station.name,
+            direction.value
+          )
+          
+          if (avgTime) {
+            runningTime = avgTime
+          }
+        }
+      }
+      
+      // 计算到达时间
+      const arrivalTime = new Date(lastDepartureTime + runningTime)
+      stationInfo.arrivalTime = formatTimeWithSeconds(arrivalTime)
+      
+      // 如果不是终点站，计算发车时间
+      if (i < allStations.length - 1) {
+        // 默认停站30秒
+        const departureTime = new Date(arrivalTime.getTime() + 30000)
+        stationInfo.departureTime = formatTimeWithSeconds(departureTime)
+        lastDepartureTime = departureTime.getTime()
+      } else {
+        stationInfo.departureTime = '终点站'
+      }
+    }
+    // 如果是之前的站点，已经过去了
+    else if (i < currentStationIndex.value) {
+      stationInfo.arrivalTime = '已过站'
+      stationInfo.departureTime = '已发车'
+    }
+    
+    result.push(stationInfo)
+  }
+  
+  return result
+}
+
+// 更新估算时间，实时反映最新数据
+const updateFullRouteEstimate = computed(() => {
+  // 使用计数器触发更新
+  const refreshTrigger = timeRefresher.value
+  
+  if (showFullRouteEstimate.value) {
+    fullRouteEstimate.value = calculateFullRouteEstimate()
+  }
+  
+  return fullRouteEstimate.value
+})
 </script>
 
 <template>
