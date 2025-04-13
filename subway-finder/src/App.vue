@@ -197,19 +197,46 @@ body.ios-webapp-mode {
   overflow: hidden;
   margin: 0;
   padding: 0;
+  -webkit-text-size-adjust: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ios-webapp-mode .app-container {
-  height: 100vh;
-  height: -webkit-fill-available;
-  padding: 0;
-  margin: 0;
+  height: 100% !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 .ios-webapp-mode .fullscreen-page {
-  padding: 0;
-  margin: 0;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.ios-webapp-mode .status-bar-spacer {
+  display: none !important;
+}
+
+/* 在iOS WebApp模式下修复刘海屏和底部的空白问题 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ios-webapp-mode .fullscreen-page {
+    padding: 0 !important;
+  }
+  
+  .ios-webapp-mode .ios-navbar {
+    padding-top: 0 !important;
+    border-top: env(safe-area-inset-top) solid transparent !important;
+    box-sizing: content-box !important;
+  }
+  
+  .ios-webapp-mode .home-container {
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
 }
 </style>

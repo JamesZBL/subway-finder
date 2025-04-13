@@ -199,4 +199,69 @@ app.mount('#app')
 // 在DOM加载完成后设置全屏模式
 document.addEventListener('DOMContentLoaded', () => {
   setupUserInteractionListener();
+  
+  // 调用 iOS WebApp 特殊处理
+  if (window.navigator.standalone) {
+    setupIOSWebApp();
+  }
+  
+  // 如果已经在WebApp模式下运行，立即应用WebApp样式
+  if (window.isInStandaloneMode && window.isInStandaloneMode()) {
+    document.documentElement.classList.add('ios-webapp-mode');
+    document.body.classList.add('ios-webapp-mode');
+  }
 });
+
+// 处理iOS WebApp相关的特殊逻辑
+const setupIOSWebApp = () => {
+  if (window.navigator.standalone) {
+    console.log('正在启用 iOS WebApp 模式特殊处理');
+    
+    // 给 html 和 body 添加 iOS WebApp 模式标识类
+    document.documentElement.classList.add('ios-webapp-mode');
+    document.body.classList.add('ios-webapp-mode');
+    
+    // 确保 viewport 正确设置
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (viewportMeta) {
+      viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+    }
+    
+    // 为适配刘海屏设置状态栏样式
+    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (statusBarMeta) {
+      statusBarMeta.content = 'black-translucent';
+    }
+    
+    // 禁用双击缩放
+    document.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+    });
+    
+    // 禁用双指缩放
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    
+    // 处理页面滚动到顶部
+    window.scrollTo(0, 0);
+    
+    // 监听页面大小变化，确保内容正确显示
+    window.addEventListener('resize', () => {
+      // 延迟执行以确保 iOS Safari 正确处理
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        
+        // 重新应用 WebApp 模式样式
+        document.documentElement.classList.add('ios-webapp-mode');
+        document.body.classList.add('ios-webapp-mode');
+      }, 50);
+    });
+    
+    // 禁用橡皮筋效果
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overscrollBehavior = 'none';
+  }
+};

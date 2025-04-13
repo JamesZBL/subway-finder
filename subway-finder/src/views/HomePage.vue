@@ -187,8 +187,36 @@ const navigateToDisplay = () => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
   -webkit-overflow-scrolling: touch;
   gap: 12px; /* 减小卡片间距 */
+  margin: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 在 iOS WebApp 模式下特别的处理 */
+:deep(.ios-webapp-mode) .home-container {
+  padding-top: env(safe-area-inset-top) !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+:deep(.ios-webapp-mode) .status-bar-spacer {
+  display: none !important;
+}
+
+/* 处理刘海屏，把状态栏区域的颜色调整为 iOS 导航栏的颜色 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  :deep(.ios-webapp-mode) .ios-navbar {
+    padding-top: 0 !important;
+    height: 44px !important;
+    border-top: env(safe-area-inset-top) solid rgba(255, 255, 255, 0.85) !important;
+    box-sizing: content-box !important;
+  }
 }
 
 .time-card {

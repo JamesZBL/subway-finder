@@ -74,6 +74,7 @@
         user-select: none;
         margin: 0;
         padding: 0;
+        -webkit-text-size-adjust: 100%;
       }
       
       #app {
@@ -92,6 +93,10 @@
           height: -webkit-fill-available;
           margin: 0;
           padding: 0;
+          position: fixed;
+          overflow: hidden;
+          width: 100%;
+          -webkit-text-size-adjust: 100%;
         }
         
         #app {
@@ -104,9 +109,25 @@
           padding: 0;
         }
         
+        /* 处理刘海屏安全区域 */
         .ios-navbar {
-          padding-top: env(safe-area-inset-top) !important;
+          padding-top: 0 !important;
+          height: 44px !important;
           margin-top: 0 !important;
+          border-top: env(safe-area-inset-top) solid rgba(255, 255, 255, 0.85) !important;
+          box-sizing: content-box !important;
+        }
+        
+        /* 隐藏状态栏占位元素 */
+        .status-bar-spacer {
+          display: none !important;
+        }
+        
+        /* 修复内容区域在 iOS WebApp 模式下的显示 */
+        .home-container {
+          padding-top: env(safe-area-inset-top) !important;
+          padding-bottom: env(safe-area-inset-bottom) !important;
+          -webkit-overflow-scrolling: touch !important;
         }
       }
     </style>

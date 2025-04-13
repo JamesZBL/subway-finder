@@ -395,57 +395,79 @@ button {
 /* iOS WebApp 模式样式 */
 html.ios-webapp-mode, 
 body.ios-webapp-mode {
-  height: 100vh;
-  height: -webkit-fill-available;
+  height: 100vh !important;
+  height: -webkit-fill-available !important;
   /* 禁用橡皮筋效果 */
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  margin: 0;
-  padding: 0;
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 /* iOS WebApp 模式下的安全区域适配 */
 .ios-webapp-mode .ios-navbar {
-  padding-top: env(safe-area-inset-top) !important;
-  height: calc(44px + env(safe-area-inset-top)) !important;
+  padding-top: 0 !important;
+  height: 44px !important;
   margin-top: 0 !important;
+  border-top: env(safe-area-inset-top) solid transparent !important;
+  box-sizing: content-box !important;
 }
 
 .ios-webapp-mode .ios-tab-bar {
-  padding-bottom: env(safe-area-inset-bottom) !important;
-  height: calc(50px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: 0 !important;
+  height: 50px !important;
   margin-bottom: 0 !important;
+  border-bottom: env(safe-area-inset-bottom) solid transparent !important;
+  box-sizing: content-box !important;
 }
 
 .ios-webapp-mode .fullscreen-page {
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 0;
-  padding-right: 0;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  overflow: hidden !important;
+  height: 100% !important;
+  position: fixed !important;
 }
 
 /* 页面内容区域适配 */
 .ios-webapp-mode .page-content {
-  padding-top: calc(16px + env(safe-area-inset-top));
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
-  padding-left: calc(16px + env(safe-area-inset-left));
-  padding-right: calc(16px + env(safe-area-inset-right));
-  margin: 0;
+  padding: 16px !important;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  margin: 0 !important;
+  height: auto !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 .ios-webapp-mode .app-container {
-  padding: 0;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  width: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: fixed !important;
+  overflow: hidden !important;
+}
+
+.ios-webapp-mode .home-container {
+  padding-top: env(safe-area-inset-top) !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+/* 状态栏适配 */
+.ios-webapp-mode .status-bar-spacer {
+  display: none !important;
 }
 
 /* 修复iOS WebApp页面跳转时的闪烁和滑动问题 */
@@ -459,11 +481,6 @@ body.ios-webapp-mode {
   opacity: 0;
 }
 
-/* 防止内容被iOS底部栏遮挡 */
-.ios-webapp-mode .page-content {
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
-}
-
 /* 防止iOS WebApp底部工具栏的上滑手势 */
 .ios-webapp-mode .app-container,
 .ios-webapp-mode .fullscreen-page {
@@ -475,51 +492,64 @@ body.ios-webapp-mode {
 /* 强制在特定条件下应用全屏样式 */
 @media all and (display-mode: standalone) {
   html, body {
-    height: 100vh;
-    height: -webkit-fill-available;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+    height: 100vh !important;
+    height: -webkit-fill-available !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    touch-action: manipulation !important;
   }
   
   .ios-navbar {
-    padding-top: env(safe-area-inset-top);
-    height: calc(44px + env(safe-area-inset-top));
-    margin-top: 0;
+    padding-top: 0 !important;
+    height: 44px !important;
+    margin-top: 0 !important;
+    border-top: env(safe-area-inset-top) solid transparent !important;
+    box-sizing: content-box !important;
   }
   
   .ios-tab-bar {
-    padding-bottom: env(safe-area-inset-bottom);
-    height: calc(50px + env(safe-area-inset-bottom));
-    margin-bottom: 0;
+    padding-bottom: 0 !important;
+    height: 50px !important;
+    margin-bottom: 0 !important;
+    border-bottom: env(safe-area-inset-bottom) solid transparent !important;
+    box-sizing: content-box !important;
   }
   
   .fullscreen-page {
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    overflow: hidden !important;
   }
   
   .page-content {
-    padding-top: calc(16px + env(safe-area-inset-top));
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
-    padding-left: calc(16px + env(safe-area-inset-left));
-    padding-right: calc(16px + env(safe-area-inset-right));
-    margin: 0;
+    padding: 16px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
   }
   
   .app-container {
-    padding: 0;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+  
+  .status-bar-spacer {
+    display: none !important;
+  }
+  
+  .home-container {
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
   }
 }
