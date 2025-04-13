@@ -32,8 +32,48 @@ if (window.matchMedia) {
   colorSchemeQuery.addEventListener('change', forceLight)
 }
 
-// 全屏模式处理函数
+// 检测是否是作为主屏幕应用运行
+const isInStandaloneMode = () => {
+  return window.navigator.standalone ||               // iOS Safari
+         window.matchMedia('(display-mode: standalone)').matches; // 其他浏览器
+};
+
+// iOS专用全屏处理
+const handleIOSFullscreen = () => {
+  // 添加iOS全屏特定样式
+  document.documentElement.classList.add('ios-webapp');
+  
+  // 禁用所有链接的默认行为，防止打开新窗口
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('a');
+    if (target && target.getAttribute('href')) {
+      e.preventDefault();
+      
+      const href = target.getAttribute('href');
+      // 如果是内部链接，使用路由导航
+      if (href.startsWith('/') || href.startsWith('#')) {
+        router.push(href);
+      } else {
+        // 外部链接可以选择在新窗口打开
+        window.open(href, '_blank');
+      }
+    }
+  });
+};
+
+// 全屏模式处理函数（适用于非iOS WebApp）
 const enterFullscreen = () => {
+  // 如果已经是主屏幕应用，不需要再请求全屏
+  if (isInStandaloneMode()) {
+    console.log('已经在WebApp模式下运行，不需要全屏请求');
+    
+    // 如果是iOS主屏幕应用，添加特殊处理
+    if (window.navigator.standalone) {
+      handleIOSFullscreen();
+    }
+    return;
+  }
+  
   const element = document.documentElement;
   
   // 尝试不同的全屏API
@@ -51,13 +91,26 @@ const enterFullscreen = () => {
 
 // 检测全屏状态变化
 const setupFullscreenListeners = () => {
+  // 路由变化时尝试保持全屏状态
+  router.afterEach(() => {
+    if (!isInStandaloneMode() && 
+        !document.fullscreenElement && 
+        !document.webkitFullscreenElement && 
+        !document.mozFullScreenElement && 
+        !document.msFullscreenElement) {
+      // 页面切换后尝试重新进入全屏
+      setTimeout(enterFullscreen, 100);
+    }
+  });
+
   const fullscreenChangeHandler = () => {
-    if (!document.fullscreenElement && 
+    if (!isInStandaloneMode() && 
+        !document.fullscreenElement && 
         !document.webkitFullscreenElement && 
         !document.mozFullScreenElement && 
         !document.msFullscreenElement) {
       // 如果退出全屏，尝试重新进入
-      setTimeout(enterFullscreen, 1000);
+      setTimeout(enterFullscreen, 100);
     }
   };
   
@@ -70,6 +123,25 @@ const setupFullscreenListeners = () => {
 
 // 用户交互后尝试进入全屏
 const setupUserInteractionListener = () => {
+  // 如果已经是WebApp模式，直接设置相关处理
+  if (isInStandaloneMode()) {
+    console.log('WebApp模式检测：已添加相关处理');
+    
+    // 如果是iOS主屏幕应用，添加特殊处理
+    if (window.navigator.standalone) {
+      handleIOSFullscreen();
+    }
+    
+    // 仍然设置路由监听以确保全屏体验
+    router.afterEach(() => {
+      document.documentElement.classList.add('in-webapp-mode');
+      // 重设页面的滚动位置，确保全屏视图
+      window.scrollTo(0, 0);
+    });
+    
+    return;
+  }
+  
   const interactionEvents = ['click', 'touchstart', 'keydown'];
   
   const interactionHandler = () => {
@@ -102,6 +174,18 @@ app.use(pinia)
 
 // 配置路由
 app.use(router)
+
+// 路由导航结束后检查全屏状态
+router.afterEach(() => {
+  // 如果不是WebApp模式，且不在全屏状态，尝试重新进入全屏
+  if (!isInStandaloneMode() && 
+      !document.fullscreenElement && 
+      !document.webkitFullscreenElement && 
+      !document.mozFullScreenElement && 
+      !document.msFullscreenElement) {
+    setTimeout(enterFullscreen, 100);
+  }
+});
 
 // 全局注册Toast组件
 app.component('Toast', Toast)

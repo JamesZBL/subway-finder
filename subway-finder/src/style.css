@@ -391,3 +391,84 @@ button {
     background-color: rgba(255, 255, 255, 0.85) !important;
   }
 }
+
+/* iOS WebApp 模式样式 */
+html.ios-webapp-mode, 
+body.ios-webapp-mode {
+  height: 100vh;
+  height: -webkit-fill-available;
+  /* 禁用橡皮筋效果 */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* iOS WebApp 模式下的安全区域适配 */
+.ios-webapp-mode .ios-navbar {
+  padding-top: env(safe-area-inset-top) !important;
+  height: calc(44px + env(safe-area-inset-top)) !important;
+}
+
+.ios-webapp-mode .ios-tab-bar {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+  height: calc(50px + env(safe-area-inset-bottom)) !important;
+}
+
+.ios-webapp-mode .fullscreen-page {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* 修复iOS WebApp页面跳转时的闪烁和滑动问题 */
+.ios-webapp-mode .page-transition-enter-active,
+.ios-webapp-mode .page-transition-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.ios-webapp-mode .page-transition-enter-from,
+.ios-webapp-mode .page-transition-leave-to {
+  opacity: 0;
+}
+
+/* 防止内容被iOS底部栏遮挡 */
+.ios-webapp-mode .page-content {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* 防止iOS WebApp底部工具栏的上滑手势 */
+.ios-webapp-mode .app-container,
+.ios-webapp-mode .fullscreen-page {
+  /* 防止触摸事件穿透到底部工具栏 */
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 强制在特定条件下应用全屏样式 */
+@media all and (display-mode: standalone) {
+  html, body {
+    height: 100vh;
+    height: -webkit-fill-available;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  
+  .ios-navbar {
+    padding-top: env(safe-area-inset-top);
+    height: calc(44px + env(safe-area-inset-top));
+  }
+  
+  .ios-tab-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(50px + env(safe-area-inset-bottom));
+  }
+  
+  .fullscreen-page {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}

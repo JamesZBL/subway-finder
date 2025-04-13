@@ -14,6 +14,9 @@
     <meta name="360-fullscreen" content="true" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f2f2f7" />
+    <meta name="apple-mobile-web-app-title" content="北京地铁查找器" />
+    <link rel="apple-touch-icon" href="/subway-finder/icon-192.png" />
+    <link rel="manifest" href="/subway-finder/manifest.json" />
     <title>北京地铁线路查找器</title>
     <!-- 处理GitHub Pages的SPA路由 -->
     <script type="text/javascript">
@@ -39,6 +42,11 @@
             history.replaceState(null, null, q.p + (q.q ? ('?' + q.q) : '') + l.hash);
           }
         }
+        
+        // 检测是否是从主屏幕启动的 WebApp
+        window.isInStandaloneMode = () => 
+          (window.navigator.standalone) || // iOS
+          (window.matchMedia('(display-mode: standalone)').matches); // Android/Chrome
       })();
       
       // 禁止双击缩放
@@ -62,6 +70,8 @@
         overflow: hidden;
         width: 100%;
         height: 100%;
+        -webkit-user-select: none; /* 禁止选择文本 */
+        user-select: none;
       }
       
       #app {
@@ -69,6 +79,17 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+      }
+      
+      /* iOS standalone webapp 样式修复 */
+      @media all and (display-mode: standalone) {
+        html, body {
+          height: 100vh;
+          height: -webkit-fill-available;
+        }
+        .ios-navbar {
+          padding-top: env(safe-area-inset-top) !important;
+        }
       }
     </style>
   </head>
