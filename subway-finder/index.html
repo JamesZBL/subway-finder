@@ -72,6 +72,8 @@
         height: 100%;
         -webkit-user-select: none; /* 禁止选择文本 */
         user-select: none;
+        margin: 0;
+        padding: 0;
       }
       
       #app {
@@ -79,6 +81,8 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+        margin: 0;
+        padding: 0;
       }
       
       /* iOS standalone webapp 样式修复 */
@@ -86,9 +90,23 @@
         html, body {
           height: 100vh;
           height: -webkit-fill-available;
+          margin: 0;
+          padding: 0;
         }
+        
+        #app {
+          position: fixed;
+          width: 100%;
+          height: 100vh;
+          height: -webkit-fill-available;
+          overflow: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        
         .ios-navbar {
           padding-top: env(safe-area-inset-top) !important;
+          margin-top: 0 !important;
         }
       }
     </style>

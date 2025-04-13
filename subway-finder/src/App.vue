@@ -167,23 +167,25 @@ onMounted(() => {
   right: 0;
   bottom: 0;
   overflow: hidden;
-  /* 更好的全屏体验 */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  /* 移除可能导致空白的内边距 */
+  padding: 0;
+  margin: 0;
 }
 
 /* iOS状态栏适配 */
 .status-bar-spacer {
   height: env(safe-area-inset-top);
   background-color: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 /* 适配iPhone X及以上机型的底部安全区域 */
 .bottom-safe-area {
   height: env(safe-area-inset-bottom);
   background-color: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 /* iOS WebApp 模式下的特殊样式 */
@@ -193,15 +195,20 @@ body.ios-webapp-mode {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
 
 .ios-webapp-mode .app-container {
   height: 100vh;
   height: -webkit-fill-available;
+  padding: 0;
+  margin: 0;
 }
 
 .ios-webapp-mode .fullscreen-page {
-  padding-top: env(safe-area-inset-top);
+  padding: 0;
+  margin: 0;
   min-height: 100vh;
   min-height: -webkit-fill-available;
 }

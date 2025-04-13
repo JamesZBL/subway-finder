@@ -401,24 +401,51 @@ body.ios-webapp-mode {
   overflow: hidden;
   position: fixed;
   width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* iOS WebApp 模式下的安全区域适配 */
 .ios-webapp-mode .ios-navbar {
   padding-top: env(safe-area-inset-top) !important;
   height: calc(44px + env(safe-area-inset-top)) !important;
+  margin-top: 0 !important;
 }
 
 .ios-webapp-mode .ios-tab-bar {
   padding-bottom: env(safe-area-inset-bottom) !important;
   height: calc(50px + env(safe-area-inset-bottom)) !important;
+  margin-bottom: 0 !important;
 }
 
 .ios-webapp-mode .fullscreen-page {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* 页面内容区域适配 */
+.ios-webapp-mode .page-content {
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  padding-left: calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
+  margin: 0;
+}
+
+.ios-webapp-mode .app-container {
+  padding: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: 100%;
 }
 
 /* 修复iOS WebApp页面跳转时的闪烁和滑动问题 */
@@ -453,22 +480,46 @@ body.ios-webapp-mode {
     overflow: hidden;
     position: fixed;
     width: 100%;
+    margin: 0;
+    padding: 0;
   }
   
   .ios-navbar {
     padding-top: env(safe-area-inset-top);
     height: calc(44px + env(safe-area-inset-top));
+    margin-top: 0;
   }
   
   .ios-tab-bar {
     padding-bottom: env(safe-area-inset-bottom);
     height: calc(50px + env(safe-area-inset-bottom));
+    margin-bottom: 0;
   }
   
   .fullscreen-page {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  
+  .page-content {
+    padding-top: calc(16px + env(safe-area-inset-top));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    margin: 0;
+  }
+  
+  .app-container {
+    padding: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
 }

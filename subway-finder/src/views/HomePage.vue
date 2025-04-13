@@ -8,7 +8,6 @@ const subwayStore = useSubwayStore()
 const currentTime = ref(new Date())
 const recentLines = ref([])
 const colonVisible = ref(true) // 用于控制冒号闪烁
-const mapZoom = ref(1) // 地图缩放级别
 
 // 每秒更新时间并实现冒号闪烁
 setInterval(() => {
@@ -96,39 +95,6 @@ const navigateToDisplay = () => {
   subwayStore.setMode('display')
   router.push('/lines')
 }
-
-// 打开线路图大图
-const openFullMap = () => {
-  const modalElem = document.getElementById('map-modal')
-  if (modalElem) {
-    modalElem.style.display = 'flex'
-    // 重置缩放级别
-    mapZoom.value = 1
-  }
-}
-
-// 关闭线路图大图
-const closeFullMap = () => {
-  const modalElem = document.getElementById('map-modal')
-  if (modalElem) {
-    modalElem.style.display = 'none'
-  }
-}
-
-// 放大地图
-const zoomInMap = () => {
-  mapZoom.value = Math.min(5, mapZoom.value + 0.5)
-}
-
-// 缩小地图
-const zoomOutMap = () => {
-  mapZoom.value = Math.max(0.5, mapZoom.value - 0.5)
-}
-
-// 重置地图缩放
-const resetMapZoom = () => {
-  mapZoom.value = 1
-}
 </script>
 
 <template>
@@ -171,17 +137,6 @@ const resetMapZoom = () => {
         </div>
       </div>
       
-      <!-- 地铁线路图预览 -->
-      <div class="subway-image-container" @click="openFullMap">
-        <div class="card-header">
-          <div class="card-title">线路图</div>
-          <div class="card-action">点击查看大图</div>
-        </div>
-        <div class="subway-image">
-          <img src="/images/Beijing Rail Transit Lines.png" alt="北京地铁线路图" class="map-preview">
-        </div>
-      </div>
-      
       <!-- 最近使用的线路 -->
       <div class="recent-lines-section">
         <div class="section-header">
@@ -199,14 +154,6 @@ const resetMapZoom = () => {
             <div class="line-name">{{ line.name }}</div>
           </div>
         </div>
-      </div>
-      
-      <!-- 应用介绍 -->
-      <div class="ios-card app-intro-card">
-        <div class="app-intro-title">关于应用</div>
-        <p class="app-intro-text">
-          北京地铁查询应用提供便捷的实时地铁位置展示和数据采集功能。您可以查看实时地铁位置、预计到达时间，或为完善线路数据提供数据采集支持。
-        </p>
       </div>
       
       <!-- 主要操作按钮 -->
@@ -229,38 +176,6 @@ const resetMapZoom = () => {
       </div>
       
       <div class="version-info">版本 1.0.0</div>
-    </div>
-    
-    <!-- 线路图全屏模态框 -->
-    <div id="map-modal" class="map-modal" @click="closeFullMap">
-      <div class="map-modal-content" @click.stop>
-        <div class="map-modal-header">
-          <h3>北京轨道交通线路图</h3>
-          <button class="close-button" @click="closeFullMap">✕</button>
-        </div>
-        <div class="map-modal-body">
-          <div class="fullscreen-map-container">
-            <img 
-              src="/images/Beijing Rail Transit Lines.png" 
-              alt="北京地铁线路图" 
-              class="fullscreen-map"
-              :style="{ transform: `scale(${mapZoom})` }"
-            >
-          </div>
-          
-          <!-- 地图缩放控制按钮 -->
-          <div class="map-zoom-controls">
-            <button class="zoom-button" @click="zoomInMap">+</button>
-            <button class="zoom-button" @click="zoomOutMap">-</button>
-            <button class="zoom-button reset-button" @click="resetMapZoom">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                <path d="M3 3v5h5"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -329,11 +244,6 @@ const resetMapZoom = () => {
   margin-top: 4px;
 }
 
-.card-action {
-  font-size: 14px;
-  color: #007aff;
-}
-
 .metro-stats {
   display: flex;
   justify-content: space-around;
@@ -357,31 +267,6 @@ const resetMapZoom = () => {
   margin-top: 4px;
 }
 
-.subway-image-container {
-  background-color: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 20px 20px 0 20px; /* 增加内边距 */
-  position: relative;
-  cursor: pointer;
-}
-
-.subway-image {
-  width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  height: 160px; /* 固定高度 */
-}
-
-.map-preview {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover; /* 改为cover以确保正常显示 */
-}
-
 .section-header {
   margin-bottom: 12px;
   padding: 0 4px; /* 增加左右内边距 */
@@ -401,16 +286,15 @@ const resetMapZoom = () => {
 
 .recent-line-item {
   background-color: white;
-  border-radius: 10px;
-  padding: 16px; /* 增加内边距 */
+  border-radius: 12px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, background-color 0.2s;
+  transition: background-color 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .recent-line-item:active {
-  transform: scale(0.98);
   background-color: rgba(0, 0, 0, 0.05);
 }
 
@@ -434,22 +318,6 @@ const resetMapZoom = () => {
 .line-name {
   font-size: 16px;
   font-weight: 500;
-}
-
-.app-intro-card {
-  padding: 20px; /* 增加内边距 */
-}
-
-.app-intro-title {
-  font-size: 17px;
-  font-weight: 600;
-  margin-bottom: 12px; /* 增加下边距 */
-}
-
-.app-intro-text {
-  font-size: 15px;
-  line-height: 1.5; /* 增加行高 */
-  color: #3a3a3c;
 }
 
 .action-buttons {
@@ -514,119 +382,5 @@ const resetMapZoom = () => {
   color: #8e8e93;
   margin-top: 16px;
   margin-bottom: 16px;
-}
-
-/* 线路图全屏模态框样式 */
-.map-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  z-index: 1000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-
-.map-modal-content {
-  width: 90%;
-  max-width: 90%;
-  height: 90%;
-  background-color: white;
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.map-modal-header {
-  padding: 16px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.map-modal-header h3 {
-  font-size: 17px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.close-button {
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
-  background-color: #f1f1f1;
-  color: #8e8e93;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.map-modal-body {
-  flex: 1;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  position: relative;
-}
-
-.fullscreen-map-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-}
-
-.fullscreen-map {
-  max-width: none;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: contain;
-  transform-origin: center;
-  transition: transform 0.2s ease;
-}
-
-/* 地图缩放控制按钮 */
-.map-zoom-controls {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.zoom-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: background-color 0.2s, transform 0.2s;
-}
-
-.zoom-button:active {
-  transform: scale(0.95);
-  background-color: rgba(80, 80, 80, 0.9);
-}
-
-.reset-button {
-  font-size: 16px;
 }
 </style> 
