@@ -31,7 +31,7 @@ export const useSubwayStore = defineStore('subway', {
       { id: 'bt', name: '八通线' },
       { id: 'cp', name: '昌平线' },
       { id: 'fs', name: '房山线' },
-      { id: 'yз', name: '燕房线' },
+      { id: 'yz', name: '燕房线' },
       { id: 'dx', name: '大兴线' },
       { id: 'sh', name: 'S1线' },
     ],

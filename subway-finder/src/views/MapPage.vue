@@ -722,8 +722,16 @@ const stopDragMap = () => {
 
 // 切换显示详细信息
 const toggleDetails = () => {
-  showDetails.value = !showDetails.value
-  toast.info(showDetails.value ? '显示详细信息' : '隐藏详细信息', 2000)
+  // 修改为页面导航
+  router.push({
+    path: '/details',
+    query: { 
+      lineId: lineId.value,
+      direction: direction.value,
+      stationName: currentStation.value ? currentStation.value.name : '',
+      currentStatus: eventTypeCode.value
+    }
+  })
 }
 
 // 获取最新的运行记录
@@ -838,12 +846,15 @@ const currentTrainPosition = computed(() => {
 
 // 切换显示全程估算时间
 const toggleFullRouteEstimate = () => {
-  showFullRouteEstimate.value = !showFullRouteEstimate.value
-  
-  if (showFullRouteEstimate.value) {
-    // 计算全程预计到达时间
-    fullRouteEstimate.value = calculateFullRouteEstimate()
-  }
+  // 修改为页面导航
+  router.push({
+    path: '/estimate',
+    query: { 
+      lineId: lineId.value,
+      direction: direction.value,
+      stationName: currentStation.value ? currentStation.value.name : ''
+    }
+  })
 }
 
 // 计算全程预计到达时间
@@ -1169,111 +1180,15 @@ const updateFullRouteEstimate = computed(() => {
     <!-- 底部操作按钮 -->
     <div class="bottom-actions">
       <button class="action-button" @click="toggleDetails">
-        {{ showDetails ? '隐藏详情' : '查看详情' }}
+        查看详情
       </button>
       <button class="action-button" @click="toggleFullRouteEstimate">
-        {{ showFullRouteEstimate ? '隐藏估算' : '全程估算' }}
+        全程估算
       </button>
       <button class="action-button switch-line-button" @click="switchLine">
         切换线路
       </button>
     </div>
-    
-    <!-- 详细信息面板 -->
-    <div class="details-panel" v-if="showDetails">
-      <div class="panel-header">
-        <h3>运行详情</h3>
-        <button class="close-button" @click="toggleDetails">✕</button>
-      </div>
-      <div class="details-content">
-        <div class="details-section">
-          <div class="section-title">实时状态</div>
-          <div class="data-row">
-            <div class="data-label">当前状态:</div>
-            <div class="data-value status-highlight">{{ currentStatusText }}</div>
-          </div>
-          <div class="data-row">
-            <div class="data-label">当前位置:</div>
-            <div class="data-value">{{ currentStation ? currentStation.name : '未知' }} → {{ nextStation ? nextStation.name : '未知' }}</div>
-          </div>
-          <div class="data-row">
-            <div class="data-label">运行进度:</div>
-            <div class="data-value">{{ progressText }}</div>
-          </div>
-          <div class="data-row">
-            <div class="data-label">预计时间:</div>
-            <div class="data-value">{{ estimatedArrivalTime }}</div>
-          </div>
-          <div class="data-row">
-            <div class="data-label">当前时间:</div>
-            <div class="data-value time-highlight">{{ formatCurrentTime }}</div>
-          </div>
-        </div>
-        
-        <div class="details-section">
-          <div class="section-title">最近记录</div>
-          <table class="records-table">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>站点</th>
-                <th>事件</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(record, index) in getLatestRecords()" :key="index">
-                <td>{{ formatTimestamp(record.timestamp) }}</td>
-                <td>{{ record.stationName }}</td>
-                <td>{{ getEventTypeText(record.eventType) }}</td>
-              </tr>
-              <tr v-if="getLatestRecords().length === 0">
-                <td colspan="3" class="no-data">暂无运行记录</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 全程时间估算面板 -->
-    <div class="estimate-panel" v-if="showFullRouteEstimate">
-      <div class="panel-header">
-        <h3>全程运行时间估算</h3>
-        <button class="close-button" @click="toggleFullRouteEstimate">✕</button>
-        </div>
-      <div class="estimate-content">
-        <div class="estimate-note">注：时间估算基于历史数据，仅供参考</div>
-        <table class="estimate-table">
-          <thead>
-            <tr>
-              <th>站点</th>
-              <th>预计到达</th>
-              <th>预计发车</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(station, index) in updateFullRouteEstimate" :key="index" 
-                :class="{
-                  'current-station-row': station.isCurrentStation,
-                  'next-station-row': station.isNextStation
-                }">
-              <td class="station-name-cell">
-                <span v-if="station.isCurrentStation" class="current-indicator">⦿</span>
-                <span v-else-if="station.isNextStation" class="next-indicator">➔</span>
-                {{ station.name }}
-              </td>
-              <td>{{ station.arrivalTime }}</td>
-              <td>{{ station.departureTime }}</td>
-            </tr>
-            <tr v-if="!updateFullRouteEstimate.length">
-              <td colspan="3" class="no-data">暂无估算数据</td>
-            </tr>
-          </tbody>
-        </table>
-          </div>
-        </div>
-    
-    <div class="bottom-safe-area"></div>
   </div>
 </template>
 
@@ -1376,6 +1291,8 @@ const updateFullRouteEstimate = computed(() => {
 
 .progress-container {
   margin-top: 16px;
+  z-index: 10;
+  position: relative;
 }
 
 .station-labels {
@@ -1399,6 +1316,7 @@ const updateFullRouteEstimate = computed(() => {
   background-color: #e5e5ea;
   border-radius: 4px;
   overflow: hidden;
+  z-index: 10;
 }
 
 .progress-fill {
@@ -1412,11 +1330,12 @@ const updateFullRouteEstimate = computed(() => {
   flex: 1;
   position: relative;
   overflow: hidden;
-  margin: 0 16px 16px;
+  margin: 8px 16px 8px;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   background-color: white;
   min-height: 300px;
+  z-index: 1;
 }
 
 .map-wrapper {
@@ -1505,6 +1424,8 @@ const updateFullRouteEstimate = computed(() => {
   display: flex;
   gap: 8px;
   padding: 0 16px 16px;
+  margin-top: 8px;
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 .action-button {
@@ -1518,156 +1439,6 @@ const updateFullRouteEstimate = computed(() => {
 
 .switch-line-button {
   background-color: #34c759;
-}
-
-.details-panel, .estimate-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #f2f2f7;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  animation: slide-up 0.3s ease;
-  overflow-y: auto;
-}
-
-@keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background-color: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.panel-header h3 {
-  font-size: 17px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.close-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  background-color: #e5e5ea;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  padding: 0;
-  color: #8e8e93;
-}
-
-.details-content, .estimate-content {
-  padding: 16px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.details-section {
-  background-color: white;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  padding: 16px;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #8e8e93;
-}
-
-.data-row {
-  display: flex;
-  margin-bottom: 8px;
-}
-
-.data-label {
-  flex: 0 0 100px;
-  color: #8e8e93;
-  font-size: 15px;
-}
-
-.data-value {
-  flex: 1;
-  font-size: 15px;
-}
-
-.status-highlight {
-  color: #007aff;
-  font-weight: 500;
-}
-
-.time-highlight {
-  color: #ff9500;
-  font-weight: 500;
-}
-
-.records-table, .estimate-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.records-table th, .estimate-table th {
-  text-align: left;
-  padding: 8px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
-  font-weight: 600;
-  color: #8e8e93;
-}
-
-.records-table td, .estimate-table td {
-  padding: 8px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
-}
-
-.no-data {
-  text-align: center;
-  color: #8e8e93;
-  padding: 16px;
-}
-
-.estimate-note {
-  font-size: 14px;
-  color: #8e8e93;
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.current-station-row {
-  background-color: rgba(0, 122, 255, 0.1);
-}
-
-.next-station-row {
-  background-color: rgba(52, 199, 89, 0.1);
-}
-
-.current-indicator {
-  color: #007aff;
-  margin-right: 4px;
-}
-
-.next-indicator {
-  color: #34c759;
-  margin-right: 4px;
-}
-
-.bottom-safe-area {
-  height: env(safe-area-inset-bottom);
 }
 
 .home-icon {

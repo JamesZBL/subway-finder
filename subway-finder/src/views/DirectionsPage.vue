@@ -1,8 +1,8 @@
 <script setup>
-import { defineProps, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { defineProps, ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useSubwayStore } from '../stores/subwayStore'
-import { getDirectionsForLine } from '../data/stations'
+import { getDirectionsForLine, stationData } from '../data/stations'
 import toast from '../utils/toast'
 
 const props = defineProps({
@@ -11,18 +11,49 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
 const subwayStore = useSubwayStore()
 const directions = ref([])
+const errorMessage = ref('')
+
+// 调试信息
+const debugInfo = computed(() => {
+  return {
+    lineId: props.lineId || route.query.lineId,
+    availableLines: Object.keys(stationData),
+    directionsCount: directions.value.length
+  }
+})
 
 onMounted(() => {
-  if (props.lineId) {
-    const line = subwayStore.getLineById(props.lineId)
+  // 优先使用 props，如果为空则从 route.query 中获取
+  const lineId = props.lineId || route.query.lineId
+  const mode = props.mode || route.query.mode || 'display'
+  
+  console.log('DirectionsPage - 已加载：', { lineId, mode, debugInfo: debugInfo.value })
+  
+  if (lineId) {
+    const line = subwayStore.getLineById(lineId)
     if (line) {
       subwayStore.setCurrentLine(line)
-      subwayStore.setMode(props.mode || 'display')
+      subwayStore.setMode(mode)
     }
     
-    directions.value = getDirectionsForLine(props.lineId)
+    // 获取方向列表
+    const lineDirections = getDirectionsForLine(lineId)
+    
+    if (lineDirections && lineDirections.length > 0) {
+      directions.value = lineDirections
+      console.log('DirectionsPage - 已获取方向列表：', lineDirections)
+    } else {
+      errorMessage.value = `未找到线路 ${lineId} 的方向信息`
+      console.error('DirectionsPage - 错误：', errorMessage.value)
+      toast.error(errorMessage.value, 3000)
+    }
+  } else {
+    errorMessage.value = '未提供线路ID'
+    console.error('DirectionsPage - 错误：', errorMessage.value)
+    toast.error(errorMessage.value, 3000)
   }
 })
 
@@ -36,8 +67,8 @@ const handleDirectionSelect = (direction) => {
   router.push({
     path: '/stations',
     query: { 
-      lineId: props.lineId,
-      mode: props.mode,
+      lineId: props.lineId || route.query.lineId,
+      mode: props.mode || route.query.mode || 'display',
       direction: direction.id
     }
   })
@@ -102,16 +133,32 @@ const goToHome = () => {
         <h2>选择方向</h2>
       </div>
       
-      <div class="ios-list">
+      <!-- 方向列表 -->
+      <div v-if="directions.length > 0" class="ios-list">
         <div 
           v-for="direction in directions" 
           :key="direction.id" 
           class="direction-item"
           @click="() => handleDirectionSelect(direction)"
         >
-          <div class="direction-indicator" :style="{ backgroundColor: getLineColor(props.lineId) }"></div>
+          <div class="direction-indicator" :style="{ backgroundColor: getLineColor(props.lineId || route.query.lineId) }"></div>
           <div class="direction-name">{{ direction.name }}</div>
           <div class="chevron-right"></div>
+        </div>
+      </div>
+      
+      <!-- 无数据或加载出错时的提示 -->
+      <div v-else class="empty-state">
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+        <div v-else class="loading-message">
+          正在加载方向信息...
+        </div>
+        
+        <div class="action-buttons">
+          <button class="retry-button" @click="goBack">返回选择线路</button>
+          <button class="home-button" @click="goToHome">返回首页</button>
         </div>
       </div>
     </div>
@@ -137,11 +184,18 @@ const goToHome = () => {
   margin: 0;
 }
 
+.debug-info {
+  font-size: 12px;
+  color: #8e8e93;
+  margin-top: 4px;
+}
+
 .ios-list {
   border-radius: 12px;
   overflow: hidden;
   background-color: white;
   margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .direction-item {
@@ -196,6 +250,57 @@ const goToHome = () => {
   border-right: 2px solid #c7c7cc;
   transform: rotate(45deg);
   margin-left: 8px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.error-message {
+  color: #ff3b30;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.loading-message {
+  color: #8e8e93;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 250px;
+}
+
+.retry-button, .home-button {
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  outline: none;
+}
+
+.retry-button {
+  background-color: #007aff;
+  color: white;
+}
+
+.home-button {
+  background-color: #e5e5ea;
+  color: #007aff;
 }
 
 .home-icon {

@@ -187,10 +187,10 @@ const navigateToDisplay = () => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-top: env(safe-area-inset-top);
+  padding-top: calc(env(safe-area-inset-top) + 16px); /* 增加顶部间距 */
   padding-bottom: env(safe-area-inset-bottom);
   -webkit-overflow-scrolling: touch;
-  gap: 12px; /* 减小卡片间距 */
+  gap: 16px; /* 增加卡片间距 */
   margin: 0;
   position: relative;
   box-sizing: border-box;
@@ -198,7 +198,7 @@ const navigateToDisplay = () => {
 
 /* 在 iOS WebApp 模式下特别的处理 */
 :deep(.ios-webapp-mode) .home-container {
-  padding-top: env(safe-area-inset-top) !important;
+  padding-top: calc(env(safe-area-inset-top) + 16px) !important; /* 增加顶部间距 */
   padding-bottom: env(safe-area-inset-bottom) !important;
   padding-left: 16px !important;
   padding-right: 16px !important;

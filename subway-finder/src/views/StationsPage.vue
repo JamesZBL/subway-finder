@@ -1,9 +1,12 @@
 <script setup>
 import { defineProps, ref, onMounted, computed, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useSubwayStore } from '../stores/subwayStore'
 import { getStationsForDirection } from '../data/stations'
 import toast from '../utils/toast'
+
+// 获取环境变量
+const isDev = ref(import.meta.env.DEV || false)
 
 const props = defineProps({
   lineId: String,
@@ -12,6 +15,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
 const subwayStore = useSubwayStore()
 const stations = ref([])
 const directionInfo = ref(null)
@@ -19,6 +23,22 @@ const currentStatus = ref('') // 当前状态显示
 const lastEvent = ref(null) // 记录最后一次操作的事件
 const elapsedTime = ref(0) // 记录已经过时间（秒）
 const updateTimer = ref(null) // 定时器引用
+
+// 从props或route.query中获取参数
+const lineId = computed(() => props.lineId || route.query.lineId)
+const direction = computed(() => props.direction || route.query.direction)
+const mode = computed(() => props.mode || route.query.mode || 'display')
+
+// 调试信息
+const debugInfo = computed(() => {
+  return {
+    lineId: lineId.value,
+    direction: direction.value,
+    mode: mode.value,
+    stationsCount: stations.value.length,
+    queryParams: route.query
+  }
+})
 
 // 格式化时间显示
 const formatTime = (seconds) => {
@@ -38,8 +58,8 @@ const formatTime = (seconds) => {
 
 // 计算当前最后一次事件
 const getLastEvent = () => {
-  if (props.lineId && props.direction) {
-    const dataKey = `${props.lineId}-${props.direction}`
+  if (lineId.value && direction.value) {
+    const dataKey = `${lineId.value}-${direction.value}`
     const events = subwayStore.runningData[dataKey] || []
     
     if (events.length > 0) {
@@ -99,18 +119,36 @@ const updateCurrentStatus = () => {
 }
 
 onMounted(() => {
-  if (props.lineId && props.direction) {
-    stations.value = getStationsForDirection(props.lineId, props.direction)
-    const line = subwayStore.getLineById(props.lineId)
+  if (lineId.value && direction.value) {
+    console.log('StationsPage - 加载站点列表:', { lineId: lineId.value, direction: direction.value })
+    
+    // 获取站点列表
+    stations.value = getStationsForDirection(lineId.value, direction.value)
+    console.log('StationsPage - 获取到站点列表:', stations.value)
+    
+    // 如果站点列表为空，记录错误并提示
+    if (!stations.value || stations.value.length === 0) {
+      console.error('StationsPage - 错误: 未找到站点数据')
+      toast.error('未找到该线路方向的站点数据', 3000)
+    }
+    
+    const line = subwayStore.getLineById(lineId.value)
     subwayStore.setCurrentLine(line)
-    subwayStore.setMode(props.mode || 'display')
+    subwayStore.setMode(mode.value)
     
     // 从父组件获取线路方向信息并设置
     import('../data/stations').then(module => {
-      const directions = module.getDirectionsForLine(props.lineId)
-      directionInfo.value = directions.find(d => d.id === props.direction)
+      const directions = module.getDirectionsForLine(lineId.value)
+      directionInfo.value = directions.find(d => d.id === direction.value)
       if (directionInfo.value) {
         subwayStore.setCurrentDirection(directionInfo.value)
+      } else {
+        console.error('StationsPage - 错误: 未找到方向信息', { 
+          lineId: lineId.value, 
+          direction: direction.value,
+          availableDirections: directions
+        })
+        toast.error('未找到该线路的方向信息', 3000)
       }
       
       // 改进点8：不加载上次状态，而是显示初始状态
@@ -120,6 +158,9 @@ onMounted(() => {
       // 启动定时器，每秒更新一次时间
       updateTimer.value = setInterval(updateElapsedTime, 1000)
     })
+  } else {
+    console.error('StationsPage - 错误: 缺少必要参数', { lineId: lineId.value, direction: direction.value })
+    toast.error('缺少必要参数，无法加载站点列表', 3000)
   }
 })
 
@@ -214,7 +255,7 @@ const handleStationSelect = (station, eventType) => {
       subwayStore.currentLine.id,
       station.name,
       eventType,
-      props.direction
+      direction.value
     )
     
     // 显示Toast提示，延长显示时间到3秒
@@ -233,7 +274,7 @@ const handleStationSelect = (station, eventType) => {
         lineId: subwayStore.currentLine.id,
         stationName: station.name,
         eventType,
-        direction: props.direction
+        direction: direction.value
       }
     })
   }
@@ -241,8 +282,8 @@ const handleStationSelect = (station, eventType) => {
 
 // 撤销最近的一个操作
 const cancelLastEvent = () => {
-  if (subwayStore.currentLine && props.direction) {
-    subwayStore.cancelLastEvent(subwayStore.currentLine.id, props.direction)
+  if (subwayStore.currentLine && direction.value) {
+    subwayStore.cancelLastEvent(subwayStore.currentLine.id, direction.value)
     toast.info('已撤销最近一次操作', 3000)
     
     // 更新最后一次事件和重置计时器
@@ -283,8 +324,8 @@ const goBack = () => {
   router.push({
     path: '/directions',
     query: {
-      lineId: props.lineId,
-      mode: props.mode
+      lineId: lineId.value,
+      mode: mode.value
     }
   })
 }
@@ -371,47 +412,70 @@ const getNextStation = (stationName) => {
     <div class="page-content">
       <!-- 方向和模式信息 -->
       <div class="ios-card info-card">
-        <div class="direction-info" v-if="directionInfo">
-          {{ directionInfo.name }}
+        <div class="card-header">
+          <h3>线路方向</h3>
         </div>
-        <div class="mode-info">
-          <span v-if="subwayStore.currentMode === 'collection'">数据采集模式</span>
-          <span v-else>位置展示模式</span>
+        <div class="card-body">
+          <div class="direction-info" v-if="directionInfo">
+            {{ directionInfo.name }}
+          </div>
+          <div v-else class="direction-info error-text">
+            未找到方向信息 ({{ direction }})
+          </div>
+          <div class="mode-info">
+            <span v-if="subwayStore.currentMode === 'collection'">数据采集模式</span>
+            <span v-else>位置展示模式</span>
+          </div>
+        </div>
+        
+        <!-- 调试信息，仅在开发环境显示 -->
+        <div class="debug-info" v-if="isDev">
+          <details>
+            <summary>调试信息</summary>
+            <pre>{{ JSON.stringify(debugInfo, null, 2) }}</pre>
+          </details>
         </div>
       </div>
       
       <!-- 当前状态面板 -->
       <div class="ios-card status-card" v-if="currentStatus">
-        <div class="status-icon" :class="{
-          'arrival-icon': lastEvent && lastEvent.eventType === 'arrival',
-          'departure-icon': lastEvent && lastEvent.eventType === 'departure'
-        }">
-          <span v-if="lastEvent && lastEvent.eventType === 'arrival'">🚉</span>
-          <span v-else-if="lastEvent && lastEvent.eventType === 'departure'">🚄</span>
-          <span v-else>🔄</span>
+        <div class="card-header">
+          <h3>当前状态</h3>
         </div>
-        <div class="status-content">
-          <div class="status-text">
-            <template v-if="lastEvent && lastEvent.eventType === 'arrival'">
-              当前位置：<span class="station-name">{{ lastEvent.stationName }}站已到达</span>
-            </template>
-            <template v-else-if="lastEvent && lastEvent.eventType === 'departure'">
-              <template v-if="getNextStation(lastEvent.stationName)">
-                当前位置：<span class="station-name">{{ lastEvent.stationName }}开往{{ getNextStation(lastEvent.stationName).name }}</span>
-              </template>
-              <template v-else>
-                当前位置：<span class="station-name">{{ lastEvent.stationName }}已是终点站</span>
-              </template>
-            </template>
-            <template v-else>
-              当前位置：未开始运行
-            </template>
-          </div>
-          <div class="time-info" v-if="lastEvent">
-            <div class="time-label">
-              {{ lastEvent.eventType === 'arrival' ? '停车时间' : '行驶时间' }}:
+        <div class="card-body">
+          <div class="status-content-wrapper">
+            <div class="status-icon" :class="{
+              'arrival-icon': lastEvent && lastEvent.eventType === 'arrival',
+              'departure-icon': lastEvent && lastEvent.eventType === 'departure'
+            }">
+              <span v-if="lastEvent && lastEvent.eventType === 'arrival'">🚉</span>
+              <span v-else-if="lastEvent && lastEvent.eventType === 'departure'">🚄</span>
+              <span v-else>🔄</span>
             </div>
-            <div class="time-value">{{ formatTime(elapsedTime) }}</div>
+            <div class="status-content">
+              <div class="status-text">
+                <template v-if="lastEvent && lastEvent.eventType === 'arrival'">
+                  <span class="station-name">{{ lastEvent.stationName }}站已到达</span>
+                </template>
+                <template v-else-if="lastEvent && lastEvent.eventType === 'departure'">
+                  <template v-if="getNextStation(lastEvent.stationName)">
+                    <span class="station-name">{{ lastEvent.stationName }}开往{{ getNextStation(lastEvent.stationName).name }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="station-name">{{ lastEvent.stationName }}已是终点站</span>
+                  </template>
+                </template>
+                <template v-else>
+                  <span>未开始运行</span>
+                </template>
+              </div>
+              <div class="time-info" v-if="lastEvent">
+                <div class="time-label">
+                  {{ lastEvent.eventType === 'arrival' ? '停车时间' : '行驶时间' }}:
+                </div>
+                <div class="time-value">{{ formatTime(elapsedTime) }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -427,15 +491,29 @@ const getNextStation = (stationName) => {
       <div class="stations-section">
         <div class="section-header">
           <h2>选择站点</h2>
+          <div class="stations-count" v-if="stations.length > 0">
+            共 {{ stations.length }} 个站点
+          </div>
         </div>
         
-        <div class="stations-list ios-list">
+        <!-- 数据加载中 -->
+        <div v-if="stations.length === 0" class="empty-state">
+          <div class="loading-icon">🔄</div>
+          <div class="empty-text">正在加载站点数据...</div>
+          <button class="retry-button" @click="goBack">返回选择方向</button>
+        </div>
+        
+        <!-- 站点列表 -->
+        <div v-else class="stations-list ios-list">
           <div class="station-row" v-for="station in stations" :key="station.name">
+            <!-- 站点名称放在前面，更符合阅读习惯 -->
+            <div class="station-name-display">{{ station.name }}</div>
+            
             <div class="station-actions">
               <button 
                 class="station-button arrival" 
                 @click="() => handleStationSelect(station, 'arrival')"
-                :style="{ borderColor: getLineColor(props.lineId) }"
+                :style="{ borderColor: getLineColor(lineId) }"
                 :class="{ 'disabled': getButtonState(station, 'arrival').disabled }"
                 :disabled="getButtonState(station, 'arrival').disabled"
                 :title="getButtonState(station, 'arrival').reason"
@@ -446,7 +524,7 @@ const getNextStation = (stationName) => {
               <button 
                 class="station-button departure" 
                 @click="() => handleStationSelect(station, 'departure')"
-                :style="{ borderColor: getLineColor(props.lineId) }"
+                :style="{ borderColor: getLineColor(lineId) }"
                 :class="{ 'disabled': getButtonState(station, 'departure').disabled }"
                 :disabled="getButtonState(station, 'departure').disabled"
                 :title="getButtonState(station, 'departure').reason"
@@ -454,7 +532,6 @@ const getNextStation = (stationName) => {
                 起步
               </button>
             </div>
-            <div class="station-name-display">{{ station.name }}</div>
           </div>
         </div>
       </div>
@@ -463,48 +540,128 @@ const getNextStation = (stationName) => {
 </template>
 
 <style scoped>
+.fullscreen-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f2f2f7;
+}
+
+.status-bar-spacer {
+  height: env(safe-area-inset-top);
+  background-color: transparent;
+}
+
+.ios-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  z-index: 10; /* 确保导航栏在最上层 */
+  position: sticky;
+  top: 0;
+}
+
+.ios-navbar h1 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ios-back-button {
+  font-size: 17px;
+  color: #007aff;
+  cursor: pointer;
+}
+
 .page-content {
   padding: 16px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: max(16px, env(safe-area-inset-bottom)); /* 确保底部有足够的间距 */
+}
+
+/* 卡片共通样式 */
+.ios-card {
+  margin-bottom: 10px;
+  padding: 12px 15px;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 .info-card {
-  padding: 16px;
-  margin-bottom: 16px;
+  max-height: 114px; /* 设置最大高度 */
+  overflow: hidden;
+}
+
+.status-card {
+  max-height: 100px; /* 设置最大高度 */
+}
+
+.card-header {
+  margin-bottom: 8px; /* 减小下方间距 */
+}
+
+.card-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .direction-info {
-  font-size: 17px;
+  font-size: 15px; /* 适当减小字号 */
   font-weight: 500;
   color: #000000;
-  margin-bottom: 8px;
+  margin-bottom: 6px; /* 减小下方间距 */
+  line-height: 1.3; /* 紧凑行高 */
+  word-break: break-word;
 }
 
 .mode-info {
   font-size: 14px;
   color: #8e8e93;
+  margin-top: 8px;
 }
 
-.status-card {
-  padding: 16px;
-  margin-bottom: 16px;
+.status-content-wrapper {
   display: flex;
   align-items: flex-start;
 }
 
 .status-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-right: 16px;
+  width: 36px; /* 减小图标尺寸 */
+  height: 36px;
+  border-radius: 18px;
+  font-size: 18px;
+  margin-right: 12px; /* 减小右侧间距 */
   background-color: #007aff;
   color: white;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .status-icon.arrival-icon {
@@ -517,12 +674,14 @@ const getNextStation = (stationName) => {
 
 .status-content {
   flex: 1;
+  min-width: 0;
 }
 
 .status-text {
-  font-size: 17px;
-  font-weight: 400;
-  margin-bottom: 12px;
+  font-size: 15px; /* 减小字号 */
+  margin-bottom: 8px; /* 减小下方间距 */
+  line-height: 1.3; /* 紧凑行高 */
+  word-wrap: break-word;
 }
 
 .station-name {
@@ -534,12 +693,12 @@ const getNextStation = (stationName) => {
   display: flex;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.05);
-  padding: 8px 12px;
+  padding: 6px 10px; /* 减小内边距 */
   border-radius: 8px;
 }
 
 .time-label {
-  font-size: 14px;
+  font-size: 13px; /* 减小字号 */
   color: #8e8e93;
   margin-right: 8px;
 }
@@ -552,18 +711,25 @@ const getNextStation = (stationName) => {
 
 .cancel-section {
   margin-bottom: 16px;
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 .cancel-button {
   width: 100%;
   background-color: #ff3b30;
-  height: 44px;
-  font-size: 17px;
+  height: 40px; /* 稍微减小高度 */
+  font-size: 16px; /* 稍微减小字号 */
   border-radius: 10px;
+  border: none;
+  color: white;
+  font-weight: 500;
 }
 
 .section-header {
   margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .section-header h2 {
@@ -572,8 +738,28 @@ const getNextStation = (stationName) => {
   margin: 0;
 }
 
+.stations-count {
+  padding: 8px 15px;
+  font-size: 14px;
+  color: #666;
+  background-color: #f8f8f8;
+  border-bottom: 1px solid #eee;
+}
+
+.stations-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 关键: 允许列表区域缩小 */
+  max-height: 60vh; /* 限制最大高度为视口高度的60% */
+  overflow: hidden; /* 防止溢出 */
+}
+
 .stations-list {
-  margin-bottom: 24px;
+  max-height: 60vh; /* 限制列表最大高度 */
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: 0;
 }
 
 .station-row {
@@ -641,5 +827,119 @@ const getNextStation = (stationName) => {
   width: 22px;
   height: 22px;
   color: #007aff;
+}
+
+/* 新增空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  flex: 1;
+}
+
+.loading-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-text {
+  font-size: 17px;
+  color: #8e8e93;
+  margin-bottom: 24px;
+}
+
+.retry-button {
+  background-color: #007aff;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.debug-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.debug-info summary {
+  font-size: 14px;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.debug-info pre {
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.error-text {
+  color: #ff3b30;
+}
+
+/* 站点列表部分的样式调整 */
+.stations-section .section-header {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.stations-section .section-header h2 {
+  font-size: 20px; /* 稍微减小字号 */
+  font-weight: 600;
+  margin: 0;
+}
+
+.stations-section .stations-count {
+  font-size: 14px;
+  color: #8e8e93;
+}
+
+.stations-list .station-row {
+  padding: 12px 16px; /* 减小上下padding */
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.stations-list .station-name-display {
+  font-size: 16px; /* 稍微减小字号 */
+  font-weight: 500;
+  margin-bottom: 8px; /* 减小下方间距 */
+}
+
+.stations-list .station-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.stations-list .station-button {
+  flex: 1;
+  height: 36px; /* 减小按钮高度 */
+  padding: 0;
+  border-radius: 8px;
+  font-size: 14px; /* 减小字号 */
+  font-weight: 500;
 }
 </style> 
