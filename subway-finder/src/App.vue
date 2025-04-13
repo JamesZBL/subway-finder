@@ -15,6 +15,15 @@ onMounted(() => {
   meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
   document.head.appendChild(meta)
   
+  // 强制使用浅色模式
+  document.documentElement.classList.add('light-mode')
+  document.documentElement.setAttribute('data-theme', 'light')
+  // 确保颜色方案永远是light
+  const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]')
+  if (colorSchemeMeta) {
+    colorSchemeMeta.content = 'light'
+  }
+  
   // 禁止页面缩放
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length > 1) {
@@ -41,6 +50,7 @@ onMounted(() => {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #000000;
+  background-color: #f2f2f7;
   height: 100%;
   width: 100%;
   display: flex;
@@ -63,12 +73,5 @@ onMounted(() => {
 .bottom-safe-area {
   height: env(safe-area-inset-bottom);
   background-color: transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  .app-container {
-    color: #ffffff;
-    background-color: #000000;
-  }
 }
 </style>

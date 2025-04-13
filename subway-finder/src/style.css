@@ -241,26 +241,60 @@ button:focus {
   -webkit-overflow-scrolling: touch;
 }
 
+/* 强制浅色模式样式 - 替代原先的暗色模式媒体查询 */
+html.light-mode, 
+html[data-theme="light"],
+:root {
+  color: #000000;
+  background-color: #f2f2f7;
+}
+
+.ios-navbar, .ios-tab-bar {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.ios-card, .ios-list {
+  background-color: white;
+}
+
+.ios-list-item {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+button {
+  background-color: #007aff;
+}
+
+/* 在CSS中为暗色模式覆盖样式，确保即使系统处于暗色模式，应用也会保持浅色样式 */
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #ffffff;
-    background-color: #000000;
+    color: #000000 !important;
+    background-color: #f2f2f7 !important;
   }
   
   .ios-navbar, .ios-tab-bar {
-    background-color: rgba(30, 30, 30, 0.85);
-    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
   }
   
   .ios-card, .ios-list {
-    background-color: #1c1c1e;
+    background-color: white !important;
   }
   
   .ios-list-item {
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(0, 0, 0, 0.1) !important;
   }
   
   button {
-    background-color: #0a84ff;
+    background-color: #007aff !important;
+  }
+  
+  .fullscreen-page {
+    background-color: #f2f2f7 !important;
+  }
+  
+  .page-content {
+    background-color: #f2f2f7 !important;
   }
 }

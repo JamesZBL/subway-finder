@@ -784,7 +784,7 @@ const progressText = computed(() => {
 
 // 添加mapImageSrc计算属性
 const mapImageSrc = computed(() => {
-  return '/images/Beijing Rail Transit Lines.png'
+  return '/subway-finder/images/Beijing Rail Transit Lines.png'
 })
 
 // 列车位置计算
