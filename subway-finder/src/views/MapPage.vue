@@ -720,147 +720,38 @@ const stopDragMap = () => {
   isDragging.value = false;
 }
 
-// 切换显示详细信息
-const toggleDetails = () => {
-  // 修改为页面导航
-  router.push({
-    path: '/details',
-    query: { 
-      lineId: lineId.value,
-      direction: direction.value,
-      stationName: currentStation.value ? currentStation.value.name : '',
-      currentStatus: eventTypeCode.value
-    }
-  })
-}
-
-// 获取最新的运行记录
-const getLatestRecords = () => {
-  const dataKey = direction.value ? `${lineId.value}-${direction.value}` : lineId.value
-  const records = subwayStore.runningData[dataKey] || []
-  
-  // 按时间排序，最新的在前
-  return [...records].sort((a, b) => 
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  ).slice(0, 5) // 仅返回最新的5条记录
-}
-
-// 格式化时间戳
-const formatTimestamp = (timestamp) => {
-  const date = new Date(timestamp)
-  // 改进28: 使用格式化函数确保时间格式正确
-  return formatTimeWithSeconds(date)
-}
-
-// 获取事件类型的中文描述
-const getEventTypeText = (type) => {
-  return type === 'arrival' ? '到站' : '起步'
-}
-
-// 计算当前实时进度（用于模板中的展示）
-const getCurrentProgress = computed(() => {
-  // 改进26: 读取计数器变量，使计算属性能够自动更新
-  const refreshTrigger = timeRefresher.value
-  
-  return calculateRealProgress(
-    startTime.value,  // 起始时间
-    eventTypeCode.value,  // 事件类型码：1=停车，2=起步
-    currentStation.value ? currentStation.value.name : null,  // 当前站点名称
-    nextStation.value ? nextStation.value.name : null  // 下一站点名称
-  )
-})
-
-// 改进26: 格式化时间为当前时间
-const formatCurrentTime = computed(() => {
-  // 使用计数器触发更新
-  const refreshTrigger = timeRefresher.value
-  // 改进28: 使用格式化函数确保时间格式正确
-  return formatTimeWithSeconds(new Date())
-})
-
-// 改进26: 计算当前进度的实时字符串表示
-const progressText = computed(() => {
-  // 使用计数器触发更新
-  const refreshTrigger = timeRefresher.value
-  
-  if (isTerminalStation.value) {
-    return '已到达终点站'
-  }
-  
-  return `${Math.round(currentPosition.value)}%`
-})
-
-// 添加mapImageSrc计算属性
-const mapImageSrc = computed(() => {
-  return '/subway-finder/images/Beijing Rail Transit Lines.png'
-})
-
-// 列车位置计算
-const currentTrainPosition = computed(() => {
-  // 模拟站点坐标数据 - 在实际应用中应该从数据源获取
-  const stationPositions = {
-    // 这里是示例坐标，实际应用中应该替换为真实的地图坐标
-    '公益西桥': { x: 500, y: 300 },
-    '新宫': { x: 550, y: 300 },
-    '西红门': { x: 600, y: 300 },
-    '高米店南': { x: 650, y: 300 },
-    '高米店北': { x: 700, y: 300 },
-    '枣园': { x: 750, y: 300 },
-    '清源路': { x: 800, y: 300 },
-    '黄村西大街': { x: 850, y: 300 },
-    '黄村火车站': { x: 900, y: 300 },
-    '义和庄': { x: 950, y: 300 },
-    '生物医药基地': { x: 1000, y: 300 },
-    '天宫院': { x: 1050, y: 300 }
-  };
-  
-  if (!currentStation.value) return null;
-  
-  const currentStationName = currentStation.value.name;
-  const currentPos = stationPositions[currentStationName];
-  
-  if (!currentPos) return null;
-  
-  // 如果是停车状态，直接返回当前站点位置
-  if (eventTypeCode.value === 1 || isTerminalStation.value) {
-    return currentPos;
-  }
-  
-  // 如果是行驶状态，计算列车在两站之间的位置
-  if (eventTypeCode.value === 2 && nextStation.value) {
-    const nextStationName = nextStation.value.name;
-    const nextPos = stationPositions[nextStationName];
-    
-    if (!nextPos) return currentPos;
-    
-    // 根据进度计算列车位置
-    const progress = currentPosition.value / 100;
-    const x = currentPos.x + (nextPos.x - currentPos.x) * progress;
-    const y = currentPos.y + (nextPos.y - currentPos.y) * progress;
-    
-    return { x, y };
-  }
-  
-  return currentPos;
-});
-
 // 切换显示全程估算时间
 const toggleFullRouteEstimate = () => {
-  // 修改为页面导航
-  router.push({
-    path: '/estimate',
-    query: { 
-      lineId: lineId.value,
-      direction: direction.value,
-      stationName: currentStation.value ? currentStation.value.name : ''
-    }
-  })
+  // 计算全程时间估算
+  calculateFullRouteEstimate()
+  // 显示弹框
+  showEstimateModal.value = true
+}
+
+// 切换显示详情
+const toggleDetails = () => {
+  // 显示详情弹框
+  showDetailsModal.value = true
+}
+
+// 弹框显示状态
+const showEstimateModal = ref(false)
+const showDetailsModal = ref(false)
+
+// 关闭弹框
+const closeEstimateModal = () => {
+  showEstimateModal.value = false
+}
+
+const closeDetailsModal = () => {
+  showDetailsModal.value = false
 }
 
 // 计算全程预计到达时间
 const calculateFullRouteEstimate = () => {
   if (!lineId.value || !direction.value || !currentStation.value) {
     console.log('缺少必要数据，无法计算全程预计时间')
+    fullRouteEstimate.value = []
     return []
   }
   
@@ -873,6 +764,7 @@ const calculateFullRouteEstimate = () => {
   const allStations = getStationsForDirection(lineId.value, direction.value)
   if (!allStations || allStations.length === 0) {
     console.log('无法获取站点列表')
+    fullRouteEstimate.value = []
     return []
   }
   
@@ -886,6 +778,7 @@ const calculateFullRouteEstimate = () => {
   } else {
     // 无法计算
     console.log('当前状态不明确，无法计算全程预计时间')
+    fullRouteEstimate.value = []
     return []
   }
   
@@ -1043,6 +936,8 @@ const calculateFullRouteEstimate = () => {
     result.push(stationInfo)
   }
   
+  console.log(`计算完成，共生成${result.length}条站点时间估算`)
+  fullRouteEstimate.value = result
   return result
 }
 
@@ -1057,6 +952,116 @@ const updateFullRouteEstimate = computed(() => {
   
   return fullRouteEstimate.value
 })
+
+// 获取最新的运行记录
+const getLatestRecords = () => {
+  const dataKey = direction.value ? `${lineId.value}-${direction.value}` : lineId.value
+  const records = subwayStore.runningData[dataKey] || []
+  
+  // 按时间排序，最新的在前
+  return [...records].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  ).slice(0, 5) // 仅返回最新的5条记录
+}
+
+// 格式化时间戳
+const formatTimestamp = (timestamp) => {
+  const date = new Date(timestamp)
+  // 改进28: 使用格式化函数确保时间格式正确
+  return formatTimeWithSeconds(date)
+}
+
+// 获取事件类型的中文描述
+const getEventTypeText = (type) => {
+  return type === 'arrival' ? '到站' : '起步'
+}
+
+// 计算当前实时进度（用于模板中的展示）
+const getCurrentProgress = computed(() => {
+  // 改进26: 读取计数器变量，使计算属性能够自动更新
+  const refreshTrigger = timeRefresher.value
+  
+  return calculateRealProgress(
+    startTime.value,  // 起始时间
+    eventTypeCode.value,  // 事件类型码：1=停车，2=起步
+    currentStation.value ? currentStation.value.name : null,  // 当前站点名称
+    nextStation.value ? nextStation.value.name : null  // 下一站点名称
+  )
+})
+
+// 改进26: 格式化时间为当前时间
+const formatCurrentTime = computed(() => {
+  // 使用计数器触发更新
+  const refreshTrigger = timeRefresher.value
+  // 改进28: 使用格式化函数确保时间格式正确
+  return formatTimeWithSeconds(new Date())
+})
+
+// 改进26: 计算当前进度的实时字符串表示
+const progressText = computed(() => {
+  // 使用计数器触发更新
+  const refreshTrigger = timeRefresher.value
+  
+  if (isTerminalStation.value) {
+    return '已到达终点站'
+  }
+  
+  return `${Math.round(currentPosition.value)}%`
+})
+
+// 添加mapImageSrc计算属性
+const mapImageSrc = computed(() => {
+  return '/subway-finder/images/Beijing Rail Transit Lines.png'
+})
+
+// 列车位置计算
+const currentTrainPosition = computed(() => {
+  // 模拟站点坐标数据 - 在实际应用中应该从数据源获取
+  const stationPositions = {
+    // 这里是示例坐标，实际应用中应该替换为真实的地图坐标
+    '公益西桥': { x: 500, y: 300 },
+    '新宫': { x: 550, y: 300 },
+    '西红门': { x: 600, y: 300 },
+    '高米店南': { x: 650, y: 300 },
+    '高米店北': { x: 700, y: 300 },
+    '枣园': { x: 750, y: 300 },
+    '清源路': { x: 800, y: 300 },
+    '黄村西大街': { x: 850, y: 300 },
+    '黄村火车站': { x: 900, y: 300 },
+    '义和庄': { x: 950, y: 300 },
+    '生物医药基地': { x: 1000, y: 300 },
+    '天宫院': { x: 1050, y: 300 }
+  };
+  
+  if (!currentStation.value) return null;
+  
+  const currentStationName = currentStation.value.name;
+  const currentPos = stationPositions[currentStationName];
+  
+  if (!currentPos) return null;
+  
+  // 如果是停车状态，直接返回当前站点位置
+  if (eventTypeCode.value === 1 || isTerminalStation.value) {
+    return currentPos;
+  }
+  
+  // 如果是行驶状态，计算列车在两站之间的位置
+  if (eventTypeCode.value === 2 && nextStation.value) {
+    const nextStationName = nextStation.value.name;
+    const nextPos = stationPositions[nextStationName];
+    
+    if (!nextPos) return currentPos;
+    
+    // 根据进度计算列车位置
+    const progress = currentPosition.value / 100;
+    const x = currentPos.x + (nextPos.x - currentPos.x) * progress;
+    const y = currentPos.y + (nextPos.y - currentPos.y) * progress;
+    
+    return { x, y };
+  }
+  
+  return currentPos;
+});
 </script>
 
 <template>
@@ -1189,6 +1194,130 @@ const updateFullRouteEstimate = computed(() => {
         切换线路
       </button>
     </div>
+    
+    <!-- 全程估算弹框 -->
+    <div class="modal-overlay" v-if="showEstimateModal" @click="closeEstimateModal">
+      <div class="modal-content estimate-modal" @click.stop>
+        <div class="modal-header">
+          <h2>全程到站估算</h2>
+          <button class="close-button" @click="closeEstimateModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="estimate-note">注：时间估算基于历史数据，仅供参考</div>
+          
+          <div class="estimate-content">
+            <table class="estimate-table">
+              <thead>
+                <tr>
+                  <th>站点</th>
+                  <th>预计到达</th>
+                  <th>预计发车</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(station, index) in fullRouteEstimate" :key="index" 
+                    :class="{
+                      'current-station-row': station.isCurrentStation,
+                      'next-station-row': station.isNextStation
+                    }">
+                  <td class="station-name-cell">
+                    <span v-if="station.isCurrentStation" class="current-indicator">⦿</span>
+                    <span v-else-if="station.isNextStation" class="next-indicator">➔</span>
+                    {{ station.name }}
+                  </td>
+                  <td>{{ station.arrivalTime }}</td>
+                  <td>{{ station.departureTime }}</td>
+                </tr>
+                <tr v-if="!fullRouteEstimate.length">
+                  <td colspan="3" class="no-data">暂无估算数据</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 详情弹框 -->
+    <div class="modal-overlay" v-if="showDetailsModal" @click="closeDetailsModal">
+      <div class="modal-content details-modal" @click.stop>
+        <div class="modal-header">
+          <h2>运行详情</h2>
+          <button class="close-button" @click="closeDetailsModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="details-section">
+            <h3>当前状态</h3>
+            <div class="details-status">
+              <div class="status-icon" :class="{ 
+                'status-stopping': eventTypeCode === 1, 
+                'status-running': eventTypeCode === 2,
+                'status-terminal': isTerminalStation
+              }">
+                <span v-if="isTerminalStation">🏁</span>
+                <span v-else-if="eventTypeCode === 1">🚉</span>
+                <span v-else-if="eventTypeCode === 2">🚄</span>
+                <span v-else>🚇</span>
+              </div>
+              <span class="status-text">{{ currentStatusText }}</span>
+            </div>
+            
+            <div class="details-grid">
+              <div class="details-row">
+                <span class="details-label">线路</span>
+                <span class="details-value">{{ subwayStore.currentLine ? subwayStore.currentLine.name : '-' }}</span>
+              </div>
+              <div class="details-row">
+                <span class="details-label">方向</span>
+                <span class="details-value">{{ directionInfo ? directionInfo.name : '-' }}</span>
+              </div>
+              <div class="details-row">
+                <span class="details-label">当前站</span>
+                <span class="details-value">{{ currentStation ? currentStation.name : '-' }}</span>
+              </div>
+              <div class="details-row">
+                <span class="details-label">下一站</span>
+                <span class="details-value">{{ nextStation ? nextStation.name : '-' }}</span>
+              </div>
+              <div class="details-row">
+                <span class="details-label">预计时间</span>
+                <span class="details-value" :class="{'arriving-soon': estimatedArrivalTime && (estimatedArrivalTime.includes('即将到站') || estimatedArrivalTime.includes('即将发车'))}">
+                  {{ estimatedArrivalTime || '-' }}
+                </span>
+              </div>
+              <div class="details-row">
+                <span class="details-label">运行进度</span>
+                <span class="details-value">{{ progressText }}</span>
+              </div>
+            </div>
+            
+            <div class="details-progress">
+              <div class="progress-bar" style="margin-top: 16px;">
+                <div 
+                  class="progress-fill" 
+                  :style="{ 
+                    width: `${currentPosition}%`,
+                    backgroundColor: isTerminalStation ? '#34c759' : lineColor
+                  }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1291,7 +1420,7 @@ const updateFullRouteEstimate = computed(() => {
 
 .progress-container {
   margin-top: 16px;
-  z-index: 10;
+  z-index: 5;
   position: relative;
 }
 
@@ -1316,7 +1445,7 @@ const updateFullRouteEstimate = computed(() => {
   background-color: #e5e5ea;
   border-radius: 4px;
   overflow: hidden;
-  z-index: 10;
+  z-index: 5;
 }
 
 .progress-fill {
@@ -1335,7 +1464,7 @@ const updateFullRouteEstimate = computed(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   background-color: white;
   min-height: 300px;
-  z-index: 1;
+  z-index: 2;
 }
 
 .map-wrapper {
@@ -1376,7 +1505,7 @@ const updateFullRouteEstimate = computed(() => {
   background-color: #007aff;
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
-  z-index: 10;
+  z-index: 5;
   animation: pulse 1.5s infinite alternate;
 }
 
@@ -1398,7 +1527,7 @@ const updateFullRouteEstimate = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 10;
+  z-index: 6;
 }
 
 .zoom-button {
@@ -1445,5 +1574,190 @@ const updateFullRouteEstimate = computed(() => {
   width: 22px;
   height: 22px;
   color: #007aff;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 92%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-header h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background-color: #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8e8e93;
+  padding: 0;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+
+.estimate-note {
+  font-size: 13px;
+  color: #8e8e93;
+  text-align: center;
+  margin: 12px 0;
+  padding: 0 16px;
+}
+
+.estimate-content {
+  padding: 0 16px 16px;
+}
+
+.estimate-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.estimate-table th,
+.estimate-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.estimate-table th {
+  color: #8e8e93;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.current-station-row {
+  background-color: rgba(0, 122, 255, 0.1);
+}
+
+.next-station-row {
+  background-color: rgba(52, 199, 89, 0.1);
+}
+
+.station-name-cell {
+  display: flex;
+  align-items: center;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-indicator {
+  color: #007aff;
+  margin-right: 6px;
+}
+
+.next-indicator {
+  color: #34c759;
+  margin-right: 6px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 32px 16px;
+  color: #8e8e93;
+}
+
+.details-section {
+  padding: 16px;
+}
+
+.details-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: #8e8e93;
+}
+
+.details-status {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f2f2f7;
+  border-radius: 10px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+  margin-bottom: 20px;
+}
+
+.details-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.details-label {
+  font-size: 13px;
+  color: #8e8e93;
+  margin-bottom: 4px;
+}
+
+.details-value {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.details-progress {
+  margin-top: 20px;
+}
+
+/* 进度条样式调整 */
+.details-progress .progress-bar {
+  height: 8px;
+  background-color: #e5e5ea;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.details-progress .progress-fill {
+  height: 100%;
+  background-color: #007aff;
+  border-radius: 4px;
+  transition: width 0.2s ease;
 }
 </style> 

@@ -14,6 +14,8 @@ const stationName = ref(route.query.stationName)
 const direction = ref(route.query.direction)
 const stations = ref([])
 const fullRouteEstimate = ref([])
+const currentStationIndex = ref(0)
+const nextStationIndex = ref(1)
 
 // 计时器
 const timer = ref(null)
@@ -23,13 +25,18 @@ const refreshTick = ref(0)
 onMounted(() => {
   if (lineId.value && direction.value) {
     stations.value = getStationsForDirection(lineId.value, direction.value) || []
-    calculateFullRouteEstimate()
     
-    // 每秒刷新一次时间估算
-    timer.value = setInterval(() => {
-      refreshTick.value++
-      calculateFullRouteEstimate()
-    }, 1000)
+    // 找出当前站在列表中的位置
+    if (stationName.value) {
+      const index = stations.value.findIndex(s => s.name === stationName.value)
+      if (index !== -1) {
+        currentStationIndex.value = index
+        nextStationIndex.value = Math.min(index + 1, stations.value.length - 1)
+      }
+    }
+    
+    // 只计算一次全程时间估算，不再定时更新
+    calculateFullRouteEstimate()
   }
 })
 
@@ -40,13 +47,18 @@ onUnmounted(() => {
   }
 })
 
+// 获取当前线路信息
+const currentLine = computed(() => {
+  return subwayStore.getLineById(lineId.value) || { name: '' }
+})
+
 // 从store获取当前状态信息
 const currentStation = computed(() => {
-  return subwayStore.getCurrentStation(lineId.value, direction.value)
+  return stations.value[currentStationIndex.value] || null
 })
 
 const nextStation = computed(() => {
-  return subwayStore.getNextStation(lineId.value, currentStation.value?.name, direction.value)
+  return stations.value[nextStationIndex.value] || null
 })
 
 // 格式化时间
@@ -61,175 +73,254 @@ const formatTime = (timestamp) => {
 
 // 计算全程时间估算
 const calculateFullRouteEstimate = () => {
+  console.log('计算全程时间估算开始')
+  
   if (!stations.value.length || !lineId.value || !currentStation.value) {
+    console.log('缺少必要数据，无法计算全程时间估算')
     fullRouteEstimate.value = []
     return
   }
   
   // 获取当前状态和开始时间
-  const eventType = subwayStore.getCurrentEventType(lineId.value, direction.value)
-  const startTime = subwayStore.getStartTimestamp(lineId.value, direction.value)
+  const result = []
+  const now = new Date().getTime()
+  let lastDepartureTime = null
+  let startPointTime = now
   
-  if (!startTime) {
-    fullRouteEstimate.value = []
-    return
-  }
-  
-  const currentStationName = currentStation.value.name
-  const currentTime = new Date().getTime()
-  const estimates = []
-  
-  // 找到当前站在站点列表中的索引
-  const currentStationIndex = stations.value.findIndex(station => 
-    station.name === currentStationName
+  // 获取当前事件类型和开始时间
+  const lastEvents = subwayStore.getRunningDataForLine(lineId.value, direction.value)
+  const sortedEvents = [...lastEvents].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   )
   
-  if (currentStationIndex === -1) {
-    fullRouteEstimate.value = []
-    return
+  // 获取最新的事件
+  const latestEvent = sortedEvents[0]
+  let eventType = null
+  let startTime = null
+  
+  if (latestEvent) {
+    eventType = latestEvent.eventType === 'arrival' ? 1 : 2
+    startTime = new Date(latestEvent.timestamp).getTime()
+    console.log('从历史数据获取当前状态:', 
+      eventType === 1 ? '停车中' : '行驶中', 
+      '开始时间:', formatTime(startTime))
   }
   
-  // 计算每个站点的预计到达和发车时间
-  let estimatedTime = currentTime
-  
-  // 处理当前站点的状态
-  const currentStationData = {
-    name: stations.value[currentStationIndex].name,
-    isCurrentStation: true,
-    isNextStation: false
+  // 如果没有找到事件，默认使用停车状态
+  if (!eventType) {
+    eventType = 1 // 默认停车状态
+    console.log('没有找到历史数据，默认使用停车状态')
   }
   
-  // 根据当前状态设置到达/发车时间
-  if (eventType === 1) { // 到站状态
-    currentStationData.arrivalTime = '已到站'
-    
-    // 计算发车时间
-    const standardStopTime = getStandardStopTime(
-      lineId.value,
-      currentStationName,
-      direction.value
-    ) || subwayStore.calculateAverageStopTimeAtStation(
-      lineId.value,
-      currentStationName,
-      direction.value
-    ) || 30000 // 默认30秒
-    
-    const elapsedStopTime = currentTime - startTime
-    if (elapsedStopTime >= standardStopTime) {
-      currentStationData.departureTime = '即将发车'
-      estimatedTime = currentTime
-    } else {
-      const departureTime = startTime + standardStopTime
-      currentStationData.departureTime = formatTime(departureTime)
-      estimatedTime = departureTime
+  // 遍历所有站点，计算到达和发车时间
+  for (let i = 0; i < stations.value.length; i++) {
+    const station = stations.value[i]
+    const stationInfo = {
+      name: station.name,
+      arrivalTime: '--:--:--',
+      departureTime: '--:--:--',
+      isCurrentStation: i === currentStationIndex.value,
+      isNextStation: i === nextStationIndex.value
     }
-  } else if (eventType === 2) { // 起步状态
-    currentStationData.arrivalTime = '--:--:--'
-    currentStationData.departureTime = '已发车'
     
-    // 下一站被视为当前要到达的站点
-    if (currentStationIndex + 1 < stations.value.length) {
-      const nextStationName = stations.value[currentStationIndex + 1].name
+    if (i === currentStationIndex.value) {
+      // 如果是当前站点
+      stationInfo.arrivalTime = '当前站点'
       
-      // 计算到达下一站的时间
-      const standardRunTime = getStandardRunningTime(
-        lineId.value,
-        currentStationName,
-        nextStationName,
-        direction.value
-      ) || subwayStore.calculateAverageTimeBetweenStations(
-        lineId.value,
-        currentStationName,
-        nextStationName,
-        direction.value
-      ) || 90000 // 默认90秒
-      
-      const elapsedRunTime = currentTime - startTime
-      if (elapsedRunTime >= standardRunTime) {
-        // 已经应该到站了
-        estimatedTime = currentTime
-      } else {
-        // 还没到站
-        estimatedTime = startTime + standardRunTime
+      // 如果当前是停车状态，计算发车时间
+      if (eventType === 1 && startTime) {
+        // 获取平均停车时间
+        let stopTime = 30 * 1000 // 默认30秒
+        const avgStopTime = subwayStore.calculateAverageStopTimeAtStation(
+          lineId.value,
+          station.name,
+          direction.value
+        )
+        if (avgStopTime) {
+          stopTime = avgStopTime
+        }
+        
+        const elapsedTime = now - startTime
+        const remainingTime = Math.max(0, stopTime - elapsedTime)
+        
+        if (remainingTime <= 0) {
+          stationInfo.departureTime = '即将发车'
+        } else {
+          const departureTime = new Date(now + remainingTime)
+          stationInfo.departureTime = formatTime(departureTime)
+          lastDepartureTime = departureTime.getTime()
+        }
+      } 
+      // 如果是行驶状态，那么这站已经发车
+      else if (eventType === 2) {
+        stationInfo.departureTime = '已发车'
+        lastDepartureTime = startTime || startPointTime
+      }
+      // 如果既不是停车也不是行驶状态，可能是刚初始化
+      else {
+        stationInfo.departureTime = '未知'
       }
     }
-  }
-  
-  estimates.push(currentStationData)
-  
-  // 处理接下来的所有站点
-  for (let i = currentStationIndex + 1; i < stations.value.length; i++) {
-    const station = stations.value[i]
-    const prevStation = stations.value[i - 1]
-    
-    const stationData = {
-      name: station.name,
-      isCurrentStation: false,
-      isNextStation: i === currentStationIndex + 1
-    }
-    
-    // 计算到达时间
-    const runTime = getStandardRunningTime(
-      lineId.value,
-      prevStation.name,
-      station.name,
-      direction.value
-    ) || subwayStore.calculateAverageTimeBetweenStations(
-      lineId.value,
-      prevStation.name,
-      station.name,
-      direction.value
-    ) || 90000 // 默认90秒
-    
-    // 到达时间 = 上一站发车时间 + 运行时间
-    const arrivalTime = estimatedTime + runTime
-    stationData.arrivalTime = formatTime(arrivalTime)
-    
-    // 计算发车时间（如果不是终点站）
-    if (i < stations.value.length - 1) {
-      const stopTime = getStandardStopTime(
-        lineId.value,
-        station.name,
-        direction.value
-      ) || subwayStore.calculateAverageStopTimeAtStation(
-        lineId.value,
-        station.name,
-        direction.value
-      ) || 30000 // 默认30秒
+    // 如果是下一站，并且当前是行驶状态，计算到达时间
+    else if (i === nextStationIndex.value && eventType === 2 && startTime) {
+      // 优先使用时刻表数据计算预计到达时间
+      let runningTime = null;
       
-      // 发车时间 = 到达时间 + 停车时间
-      const departureTime = arrivalTime + stopTime
-      stationData.departureTime = formatTime(departureTime)
+      // 尝试从时刻表获取标准运行时间
+      const standardTime = getStandardRunningTime(
+        lineId.value,
+        currentStation.value.name,
+        nextStation.value.name,
+        direction.value
+      )
       
-      // 更新下一站的预计时间基准
-      estimatedTime = departureTime
-    } else {
-      // 终点站没有发车时间
-      stationData.departureTime = '终点站'
+      if (standardTime) {
+        runningTime = standardTime
+      } else {
+        // 尝试从历史数据获取平均运行时间
+        runningTime = subwayStore.calculateAverageTimeBetweenStations(
+          lineId.value,
+          currentStation.value.name,
+          nextStation.value.name,
+          direction.value
+        )
+        
+        if (!runningTime) {
+          // 如果无法获取历史数据，使用默认90秒
+          runningTime = 90 * 1000
+        }
+      }
+      
+      const elapsedTime = now - startTime
+      const remainingTime = Math.max(0, runningTime - elapsedTime)
+      
+      if (remainingTime <= 0) {
+        stationInfo.arrivalTime = '即将到站'
+        console.log(`站点 ${station.name} 即将到站 - 已超出预计到站时间 ${Math.abs(remainingTime)/1000}秒`)
+        
+        // 修复：即将到站时，获取平均停车时间计算发车时间
+        let stopTime = 30 * 1000 // 默认30秒
+        const avgStopTime = subwayStore.calculateAverageStopTimeAtStation(
+          lineId.value,
+          station.name,
+          direction.value
+        )
+        if (avgStopTime) {
+          stopTime = avgStopTime
+          console.log(`使用历史平均停车时间: ${stopTime/1000}秒`)
+        } else {
+          console.log(`使用默认停车时间: ${stopTime/1000}秒`)
+        }
+        
+        // 计算实际已经到站的时间
+        // 实际已到站时间 = 当前时间 - (已耗时间 - 运行时间) = 当前时间 - 超出时间
+        const arrivalTimestamp = now - Math.abs(remainingTime)
+        // 计算已经停车的时间
+        const elapsedStopTime = now - arrivalTimestamp
+        console.log(`估计已停车时间: ${elapsedStopTime/1000}秒, 总停车时间: ${stopTime/1000}秒`)
+        
+        // 如果已经停车时间超过平均停车时间，显示"即将发车"
+        if (elapsedStopTime >= stopTime) {
+          stationInfo.departureTime = '即将发车'
+          console.log(`站点 ${station.name} 即将发车`)
+        } else {
+          // 否则计算剩余停车时间
+          const remainingStopTime = stopTime - elapsedStopTime
+          const departureTime = new Date(now + remainingStopTime)
+          stationInfo.departureTime = formatTime(departureTime)
+          lastDepartureTime = departureTime.getTime()
+          console.log(`站点 ${station.name} 预计发车时间: ${formatTime(departureTime)}, 还需停车: ${remainingStopTime/1000}秒`)
+        }
+      } else {
+        const arrivalTime = new Date(now + remainingTime)
+        stationInfo.arrivalTime = formatTime(arrivalTime)
+        console.log(`站点 ${station.name} 预计到达时间: ${formatTime(arrivalTime)}, 还需: ${remainingTime/1000}秒`)
+        
+        // 默认停站30秒
+        let stopTime = 30 * 1000 // 默认30秒
+        const avgStopTime = subwayStore.calculateAverageStopTimeAtStation(
+          lineId.value,
+          station.name,
+          direction.value
+        )
+        if (avgStopTime) {
+          stopTime = avgStopTime
+          console.log(`使用历史平均停车时间: ${stopTime/1000}秒`)
+        } else {
+          console.log(`使用默认停车时间: ${stopTime/1000}秒`)
+        }
+        
+        const departureTime = new Date(arrivalTime.getTime() + stopTime)
+        stationInfo.departureTime = formatTime(departureTime)
+        lastDepartureTime = departureTime.getTime()
+        console.log(`站点 ${station.name} 预计发车时间: ${formatTime(departureTime)}`)
+      }
+    }
+    // 如果是后续站点，且有前一站的发车时间，则可以计算
+    else if (i > nextStationIndex.value && lastDepartureTime) {
+      // 默认运行时间3分钟
+      const defaultRunningTime = 3 * 60 * 1000
+      // 计算从上一站到此站的运行时间
+      let runningTime = defaultRunningTime
+      
+      // 尝试获取历史数据
+      if (i > 0) {
+        const prevStation = stations.value[i-1]
+        // 尝试从时刻表获取标准运行时间
+        const standardTime = getStandardRunningTime(
+          lineId.value,
+          prevStation.name,
+          station.name,
+          direction.value
+        )
+        
+        if (standardTime) {
+          runningTime = standardTime
+        } else {
+          // 尝试从历史数据获取平均运行时间
+          const avgTime = subwayStore.calculateAverageTimeBetweenStations(
+            lineId.value,
+            prevStation.name,
+            station.name,
+            direction.value
+          )
+          
+          if (avgTime) {
+            runningTime = avgTime
+          }
+        }
+      }
+      
+      // 计算到达时间
+      const arrivalTime = new Date(lastDepartureTime + runningTime)
+      stationInfo.arrivalTime = formatTime(arrivalTime)
+      
+      // 如果不是终点站，计算发车时间
+      if (i < stations.value.length - 1) {
+        // 默认停站30秒
+        const departureTime = new Date(arrivalTime.getTime() + 30000)
+        stationInfo.departureTime = formatTime(departureTime)
+        lastDepartureTime = departureTime.getTime()
+      } else {
+        stationInfo.departureTime = '终点站'
+      }
+    }
+    // 如果是之前的站点，已经过去了
+    else if (i < currentStationIndex.value) {
+      stationInfo.arrivalTime = '已过站'
+      stationInfo.departureTime = '已发车'
     }
     
-    estimates.push(stationData)
+    result.push(stationInfo)
   }
   
-  // 处理当前站之前的站点（如果有）
-  let prevEstimatedTime = null
-  
-  for (let i = currentStationIndex - 1; i >= 0; i--) {
-    const station = stations.value[i]
-    const nextStation = stations.value[i + 1]
-    
-    const stationData = {
-      name: station.name,
-      isCurrentStation: false,
-      isNextStation: false,
-      arrivalTime: '已到站',
-      departureTime: '已发车'
-    }
-    
-    estimates.unshift(stationData)
-  }
-  
-  fullRouteEstimate.value = estimates
+  console.log(`计算完成，共生成${result.length}条站点时间估算`)
+  fullRouteEstimate.value = result
+}
+
+// 刷新时间估算
+const refreshEstimate = () => {
+  calculateFullRouteEstimate()
 }
 
 // 返回上一页
@@ -247,19 +338,26 @@ const goToHome = () => {
   <div class="fullscreen-page">
     <div class="status-bar-spacer"></div>
     
+    <!-- iOS风格导航栏 -->
     <div class="ios-navbar">
-      <button class="back-button" @click="goBack">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
-      <h1>全程时间估算</h1>
-      <button class="home-button" @click="goToHome">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      </button>
+      <div class="ios-back-button" @click="goBack">返回</div>
+      <h1 v-if="currentLine">{{ currentLine.name }}</h1>
+      <div style="width: 65px; visibility: hidden;">占位</div>
+      <div class="navbar-right" style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center; gap: 16px;">
+        <div class="refresh-icon" @click="refreshEstimate">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </div>
+        <div class="home-icon" @click="goToHome">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+      </div>
     </div>
     
     <div class="estimate-container">
@@ -300,10 +398,16 @@ const goToHome = () => {
 
 <style scoped>
 .fullscreen-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f2f2f7;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background-color: #f2f2f7;
+  overflow: hidden;
 }
 
 .status-bar-spacer {
@@ -329,15 +433,17 @@ const goToHome = () => {
   margin: 0;
 }
 
-.back-button, .home-button {
+.ios-back-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
   color: #007aff;
-  background: none;
-  padding: 0;
+  font-size: 17px;
+}
+
+.home-icon {
+  width: 22px;
+  height: 22px;
+  color: #007aff;
 }
 
 .estimate-container {

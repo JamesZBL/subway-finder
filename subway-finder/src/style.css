@@ -296,8 +296,13 @@ button {
   }
   
   /* 卡片和列表 */
-  .ios-card, .ios-list, .map-modal-content, .station-status-card, .map-section, .details-section {
+  .ios-card, .ios-list, .map-modal-content, .station-status-card {
     background-color: white !important;
+  }
+  
+  /* 单独设置map-section和details-section的样式，降低权重 */
+  .map-section:not([class*="custom"]), .details-section:not([class*="custom"]) {
+    background-color: white;
   }
   
   /* 列表项和边框 */
@@ -362,8 +367,9 @@ button {
     background-color: #f0f0f0 !important;
   }
   
-  .progress-bar {
-    background-color: #e0e0e0 !important;
+  /* 调整progress-bar的样式，降低权重 */
+  .progress-bar:not([class*="custom"]) {
+    background-color: #e0e0e0;
   }
   
   .time-info {

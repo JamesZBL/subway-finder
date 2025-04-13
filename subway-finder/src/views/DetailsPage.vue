@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSubwayStore } from '../stores/subwayStore'
+import { getStationsForDirection } from '../data/stations'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,14 +12,30 @@ const lineId = ref(route.query.lineId)
 const stationName = ref(route.query.stationName)
 const direction = ref(route.query.direction)
 const currentStatus = ref(route.query.currentStatus)
+const stations = ref([])
 
-// 从store获取当前状态信息
+// 加载站点数据
+onMounted(() => {
+  if (lineId.value && direction.value) {
+    stations.value = getStationsForDirection(lineId.value, direction.value) || []
+  }
+})
+
+// 获取当前站点的索引
+const currentStationIndex = computed(() => {
+  if (!stations.value.length || !stationName.value) return -1
+  return stations.value.findIndex(station => station.name === stationName.value)
+})
+
+// 计算当前站点和下一站点
 const currentStation = computed(() => {
-  return subwayStore.getCurrentStation(lineId.value, direction.value)
+  if (currentStationIndex.value === -1) return null
+  return stations.value[currentStationIndex.value]
 })
 
 const nextStation = computed(() => {
-  return subwayStore.getNextStation(lineId.value, currentStation.value?.name, direction.value)
+  if (currentStationIndex.value === -1 || currentStationIndex.value >= stations.value.length - 1) return null
+  return stations.value[currentStationIndex.value + 1]
 })
 
 // 格式化时间
@@ -46,7 +63,7 @@ const currentStatusText = computed(() => {
 // 格式化时间戳
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return '未知'
-  const date = new Date(parseInt(timestamp))
+  const date = new Date(timestamp)
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
   const seconds = date.getSeconds().toString().padStart(2, '0')
@@ -55,15 +72,24 @@ const formatTimestamp = (timestamp) => {
 
 // 获取事件类型文本
 const getEventTypeText = (eventType) => {
-  if (eventType === 1) return '到站'
-  if (eventType === 2) return '起步'
-  return '未知'
+  return eventType === 'arrival' ? '到站' : '起步'
 }
 
 // 获取最近运行记录
 const getLatestRecords = () => {
-  if (!lineId.value || !direction.value) return []
-  return subwayStore.getRunningRecords(lineId.value, direction.value).slice(0, 10)
+  if (!lineId.value || !direction.value) {
+    console.log('lineId或direction为空，无法获取记录')
+    return []
+  }
+  
+  // 从store中获取该线路和方向的所有记录
+  const allRecords = subwayStore.getRunningDataForLine(lineId.value, direction.value)
+  console.log(`获取到${lineId.value}-${direction.value}的运行记录:`, allRecords.length)
+  
+  // 按时间戳排序，最新的在前
+  return [...allRecords].sort((a, b) => 
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  ).slice(0, 10) // 仅返回最新的10条记录
 }
 
 // 返回上一页
@@ -81,19 +107,19 @@ const goToHome = () => {
   <div class="fullscreen-page">
     <div class="status-bar-spacer"></div>
     
+    <!-- iOS风格导航栏 -->
     <div class="ios-navbar">
-      <button class="back-button" @click="goBack">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
+      <div class="ios-back-button" @click="goBack">返回</div>
       <h1>运行详情</h1>
-      <button class="home-button" @click="goToHome">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      </button>
+      <div style="width: 65px; visibility: hidden;">占位</div>
+      <div class="navbar-right" style="position: absolute; right: 10px; top: 0; height: 100%; display: flex; align-items: center;">
+        <div class="home-icon" @click="goToHome">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+      </div>
     </div>
     
     <div class="details-container">
@@ -141,10 +167,16 @@ const goToHome = () => {
 
 <style scoped>
 .fullscreen-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f2f2f7;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background-color: #f2f2f7;
+  overflow: hidden;
 }
 
 .status-bar-spacer {
@@ -170,15 +202,17 @@ const goToHome = () => {
   margin: 0;
 }
 
-.back-button, .home-button {
+.ios-back-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
   color: #007aff;
-  background: none;
-  padding: 0;
+  font-size: 17px;
+}
+
+.home-icon {
+  width: 22px;
+  height: 22px;
+  color: #007aff;
 }
 
 .details-container {
@@ -247,6 +281,10 @@ const goToHome = () => {
 .records-table td {
   padding: 8px;
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.records-table tr:last-child td {
+  border-bottom: none;
 }
 
 .no-data {
